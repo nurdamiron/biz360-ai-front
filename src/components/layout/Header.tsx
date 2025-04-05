@@ -38,12 +38,12 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 
 const Header: React.FC = () => {
-  const { colorMode } = React.useContext(ColorModeContext);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { user } = useAppSelector(state => state.auth);
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
+    const colorMode = React.useContext(ColorModeContext);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const { user } = useAppSelector(state => state.auth);
+    const dispatch = useAppDispatch();
+    const navigate = useNavigate();
   
   // Состояние для мобильного меню
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);

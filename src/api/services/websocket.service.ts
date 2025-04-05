@@ -73,6 +73,7 @@ export class WebSocketService {
     }
   }
   
+  private maxQueueSize: number = 100;
   /**
    * Открытие WebSocket соединения
    */
@@ -228,8 +229,14 @@ export class WebSocketService {
    */
   private send(message: WebSocketMessage): void {
     if (!this.isConnected()) {
-      this.messageQueue.push(message);
+      // Ограничиваем размер очереди, чтобы избежать утечек памяти
+      if (this.messageQueue.length < this.maxQueueSize) {
+        this.messageQueue.push(message);
+      } else {
+        console.warn(`WebSocket message queue is full. Message dropped: ${JSON.stringify(message)}`);
+      }
       
+      // Пытаемся подключиться, если соединение закрыто
       if (this.state === WebSocketState.CLOSED) {
         this.connect();
       }
@@ -241,7 +248,12 @@ export class WebSocketService {
       this.socket?.send(JSON.stringify(message));
     } catch (error) {
       console.error('Error sending WebSocket message:', error);
-      this.messageQueue.push(message);
+      
+      // Проверяем состояние сокета и при необходимости переподключаемся
+      if (this.socket?.readyState !== WebSocket.OPEN) {
+        this.messageQueue.push(message);
+        this.scheduleReconnect();
+      }
     }
   }
   

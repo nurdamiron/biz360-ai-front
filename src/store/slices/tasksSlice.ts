@@ -133,23 +133,63 @@ const tasksSlice = createSlice({
       const index = state.tasks.findIndex(t => t.id === task.id);
       if (index !== -1) {
         state.tasks[index] = task;
+      } else {
+        // Если задачи нет в списке, добавляем её
+        state.tasks.push(task);
       }
       // Обновление выбранной задачи, если она открыта
       if (state.selectedTask && state.selectedTask.id === task.id) {
-        state.selectedTask = task;
+        // Сохраняем логи текущей задачи, если они есть
+        const currentLogs = state.selectedTask.logs || [];
+        
+        // Объединяем данные обновленной задачи с сохранением логов
+        state.selectedTask = {
+          ...task,
+          logs: task.logs ? task.logs : currentLogs
+        };
       }
     },
     // Добавление лога задачи от WebSocket
     addTaskLogFromWebSocket(state, action: PayloadAction<{ taskId: number; log: any }>) {
       const { taskId, log } = action.payload;
+      
       // Добавляем лог к выбранной задаче, если она открыта
       if (state.selectedTask && state.selectedTask.id === taskId) {
         if (!state.selectedTask.logs) {
           state.selectedTask.logs = [];
         }
-        state.selectedTask.logs.push(log);
+        
+        // Проверяем, есть ли уже такой лог
+        const existingLogIndex = state.selectedTask.logs.findIndex(l => l.id === log.id);
+        
+        if (existingLogIndex !== -1) {
+          // Обновляем существующий лог
+          state.selectedTask.logs[existingLogIndex] = log;
+        } else {
+          // Добавляем новый лог в начало массива для хронологического порядка
+          state.selectedTask.logs.unshift(log);
+          
+          // Ограничиваем количество логов в состоянии для предотвращения проблем с производительностью
+          if (state.selectedTask.logs.length > 100) {
+            state.selectedTask.logs = state.selectedTask.logs.slice(0, 100);
+          }
+        }
+      }
+      
+      // Также можно обновить задачу в общем списке, чтобы отразить последний статус
+      const taskIndex = state.tasks.findIndex(t => t.id === taskId);
+      if (taskIndex !== -1) {
+        // Обновляем прогресс или статус задачи на основе лога
+        if (log.progress !== undefined) {
+          state.tasks[taskIndex].progress = log.progress;
+        }
+        
+        if (log.status) {
+          state.tasks[taskIndex].status = log.status;
+        }
       }
     },
+    
     // Обновление статуса задачи от WebSocket
     updateTaskStatusFromWebSocket(state, action: PayloadAction<{ taskId: number; status: string }>) {
       const { taskId, status } = action.payload;

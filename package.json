@@ -17,6 +17,8 @@
     "@reduxjs/toolkit": "^2.6.1",
     "axios": "^1.8.4",
     "date-fns": "^2.30.0",
+    "highlight.js": "^11.11.1",
+    "hljs": "^6.2.3",
     "jsonwebtoken": "^9.0.2",
     "notistack": "^3.0.1",
     "react": "^19.0.0",
@@ -24,7 +26,8 @@
     "react-markdown": "^10.1.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^6.30.0",
-    "react-swipeable-views": "^0.14.0"
+    "react-swipeable-views": "^0.14.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

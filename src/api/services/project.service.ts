@@ -68,6 +68,62 @@ export const ProjectService = {
     return data.data;
   },
   
+
+  /**
+ * Сохранение содержимого файла
+ * @param projectId ID проекта
+ * @param filePath Путь к файлу
+ * @param content Содержимое файла
+ * @returns Результат операции
+ */
+async saveFileContent(projectId: number, filePath: string, content: string): Promise<boolean> {
+  try {
+    const { data } = await apiClient.post<ApiResponse<any>>(`/projects/${projectId}/files/content`, {
+      path: filePath,
+      content
+    });
+    return data.success;
+  } catch (error) {
+    console.error('Error saving file content:', error);
+    throw error;
+  }
+},
+
+/**
+ * Создание новой папки
+ * @param projectId ID проекта
+ * @param folderPath Путь к папке
+ * @returns Результат операции
+ */
+async createFolder(projectId: number, folderPath: string): Promise<boolean> {
+  try {
+    const { data } = await apiClient.post<ApiResponse<any>>(`/projects/${projectId}/files/folder`, {
+      path: folderPath
+    });
+    return data.success;
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    throw error;
+  }
+},
+
+/**
+ * Удаление файла или папки
+ * @param projectId ID проекта
+ * @param path Путь к файлу или папке
+ * @returns Результат операции
+ */
+async deleteFileOrFolder(projectId: number, path: string): Promise<boolean> {
+  try {
+    const { data } = await apiClient.delete<ApiResponse<any>>(`/projects/${projectId}/files`, {
+      params: { path }
+    });
+    return data.success;
+  } catch (error) {
+    console.error('Error deleting file or folder:', error);
+    throw error;
+  }
+},
   /**
    * Получение списка файлов проекта
    * @param id ID проекта
@@ -75,10 +131,15 @@ export const ProjectService = {
    * @returns Список файлов и каталогов
    */
   async getProjectFiles(id: number, path?: string): Promise<any> {
-    const { data } = await apiClient.get<ApiResponse<any>>(`/projects/${id}/files`, {
-      params: { path }
-    });
-    return data.data;
+    try {
+      const { data } = await apiClient.get<ApiResponse<any>>(`/projects/${id}/files`, {
+        params: { path }
+      });
+      return data.data;
+    } catch (error) {
+      console.error('Error getting project files:', error);
+      throw error;
+    }
   },
   
   /**
@@ -88,11 +149,18 @@ export const ProjectService = {
    * @returns Содержимое файла
    */
   async getFileContent(projectId: number, filePath: string): Promise<any> {
-    const { data } = await apiClient.get<ApiResponse<any>>(`/projects/${projectId}/files/content`, {
-      params: { path: filePath }
-    });
-    return data.data;
-  }
+    try {
+      const { data } = await apiClient.get<ApiResponse<any>>(`/projects/${projectId}/files/content`, {
+        params: { path: filePath }
+      });
+      return data.data;
+    } catch (error) {
+      console.error('Error getting file content:', error);
+      throw error;
+    }
+  },
+
+  
 };
 
 export default ProjectService;

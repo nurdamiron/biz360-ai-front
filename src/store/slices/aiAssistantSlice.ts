@@ -54,6 +54,36 @@ const initialState: AIAssistantState = {
   error: null
 };
 
+
+export interface FailedGenerationAnalysis {
+  generationId: number;
+  filePath: string;
+  analysis: string;
+}
+
+export interface RegenerateCodeRequest {
+  generationId: number;
+  taskId: number;
+  feedback?: string;
+}
+
+export interface RegenerateCodeResponse {
+  success: boolean;
+  taskId: number;
+  generationId: number;
+  filePath: string;
+  code: string;
+  language: string;
+  summary: string;
+}
+
+export interface CodeFeedbackRequest {
+  projectId: number;
+  generationId: number;
+  feedbackText: string;
+  rating: number;
+}
+
 // Асинхронные действия
 export const fetchAIStatus = createAsyncThunk(
   'aiAssistant/fetchStatus',
@@ -95,10 +125,11 @@ export const analyzeFailedGeneration = createAsyncThunk(
   'aiAssistant/analyzeFailedGeneration',
   async ({ projectId, generationId }: { projectId: number; generationId: number }, { rejectWithValue }) => {
     try {
-      const result = await CodeGenerationService.analyzeFailedGeneration(projectId, generationId);
+      const result = await AIAssistantService.analyzeFailedGeneration(projectId, generationId);
       return result;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Ошибка при анализе неудачной генерации');
+      const errorMessage = error.message || 'Ошибка при анализе неудачной генерации';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -107,23 +138,29 @@ export const regenerateCode = createAsyncThunk(
   'aiAssistant/regenerateCode',
   async (params: RegenerateCodeRequest, { rejectWithValue }) => {
     try {
-      const result = await CodeGenerationService.regenerateCode(params.generationId, params.taskId, params.feedback || '');
-      enqueueSnackbar('Код успешно регенерирован', { variant: 'success' });
+      const result = await AIAssistantService.regenerateCode(
+        params.generationId,
+        params.taskId,
+        params.feedback || ''
+      );
       return result;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Ошибка при регенерации кода');
+      const errorMessage = error.message || 'Ошибка при регенерации кода';
+      return rejectWithValue(errorMessage);
     }
   }
 );
+
 
 export const generateTests = createAsyncThunk(
   'aiAssistant/generateTests',
   async (generationId: number, { rejectWithValue }) => {
     try {
-      const result = await CodeGenerationService.generateTests(generationId);
+      const result = await AIAssistantService.generateTests(generationId);
       return result;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Ошибка при генерации тестов');
+      const errorMessage = error.message || 'Ошибка при генерации тестов';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -132,14 +169,15 @@ export const sendFeedback = createAsyncThunk(
   'aiAssistant/sendFeedback',
   async (params: CodeFeedbackRequest, { rejectWithValue }) => {
     try {
-      const result = await CodeGenerationService.sendFeedback(params);
-      enqueueSnackbar('Обратная связь успешно отправлена', { variant: 'success' });
+      const result = await AIAssistantService.sendFeedback(params);
       return result;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Ошибка при отправке обратной связи');
+      const errorMessage = error.message || 'Ошибка при отправке обратной связи';
+      return rejectWithValue(errorMessage);
     }
   }
 );
+
 
 
 export const createPullRequest = createAsyncThunk(
@@ -158,6 +196,8 @@ export const createPullRequest = createAsyncThunk(
     }
   }
 );
+
+
 
 // Создаем slice
 const aiAssistantSlice = createSlice({
@@ -251,19 +291,34 @@ const aiAssistantSlice = createSlice({
       state.isLoading = false;
       state.error = action.payload as string;
     });
+
+    // Обработка генерации тестов
+builder.addCase(generateTests.pending, (state) => {
+  state.isLoading = true;
+  state.error = null;
+});
+builder.addCase(generateTests.fulfilled, (state) => {
+  state.isLoading = false;
+});
+builder.addCase(generateTests.rejected, (state, action) => {
+  state.isLoading = false;
+  state.error = action.payload as string;
+});
+
+
     
     // Обработка отправки обратной связи
-    builder.addCase(sendFeedback.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    });
-    builder.addCase(sendFeedback.fulfilled, (state) => {
-      state.isLoading = false;
-    });
-    builder.addCase(sendFeedback.rejected, (state, action) => {
-      state.isLoading = false;
-      state.error = action.payload as string;
-    });
+builder.addCase(sendFeedback.pending, (state) => {
+  state.isLoading = true;
+  state.error = null;
+});
+builder.addCase(sendFeedback.fulfilled, (state) => {
+  state.isLoading = false;
+});
+builder.addCase(sendFeedback.rejected, (state, action) => {
+  state.isLoading = false;
+  state.error = action.payload as string;
+});
     
     // Обработка создания pull request
     builder.addCase(createPullRequest.pending, (state) => {
@@ -277,7 +332,7 @@ const aiAssistantSlice = createSlice({
       state.isLoading = false;
       state.error = action.payload as string;
     });
-    
+
   }
 });
 

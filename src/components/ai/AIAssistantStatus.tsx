@@ -1,4 +1,5 @@
 // src/components/ai/AIAssistantStatus.tsx
+
 import React, { useEffect, useState } from 'react';
 import {
   Box,
@@ -12,15 +13,11 @@ import {
   Tooltip,
   Chip,
   Button,
-  Grid,
-  List,
-  ListItem,
-  ListItemText,
-  Collapse,
   IconButton,
   useTheme,
   alpha,
-  Badge
+  Badge,
+  Avatar
 } from '@mui/material';
 
 // Иконки
@@ -32,8 +29,6 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import WarningIcon from '@mui/icons-material/Warning';
 
 // Redux
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -41,7 +36,6 @@ import { fetchAIStatus } from '../../store/slices/aiAssistantSlice';
 
 // Хуки
 import { useSnackbar } from 'notistack';
-import AIAssistantService from '../../api/services/ai-assistant.service';
 
 interface AIAssistantStatusProps {
   variant?: 'full' | 'compact';
@@ -106,7 +100,7 @@ const AIAssistantStatus: React.FC<AIAssistantStatusProps> = ({
     return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
   };
   
-  // Получение цвета для отображения состояния queue в виде чипа
+  // Получение цвета для отображения состояния
   const getStatusColor = () => {
     if (!status) return 'default';
     
@@ -119,7 +113,7 @@ const AIAssistantStatus: React.FC<AIAssistantStatusProps> = ({
     return 'success';
   };
   
-  // Получение текста для отображения состояния queue
+  // Получение текста для отображения состояния
   const getStatusText = () => {
     if (!status) return 'Загрузка...';
     
@@ -166,8 +160,8 @@ const AIAssistantStatus: React.FC<AIAssistantStatusProps> = ({
       <Box>
         <Card variant="outlined">
           <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box display="flex" alignItems="center">
                 <Badge
                   color={status?.running ? "success" : "error"}
                   variant="dot"
@@ -181,55 +175,53 @@ const AIAssistantStatus: React.FC<AIAssistantStatusProps> = ({
                     <MemoryIcon color="primary" />
                   </Avatar>
                 </Badge>
-              </Grid>
-              
-              <Grid item xs>
-                <Typography variant="subtitle2">
-                  AI-ассистент {isLoading && <CircularProgress size={12} sx={{ ml: 1 }} />}
-                </Typography>
                 
-                <Box display="flex" alignItems="center">
-                  <Chip
-                    label={getStatusText()}
-                    color={getStatusColor() as "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"}
-                    size="small"
-                    sx={{ height: 20, '& .MuiChip-label': { px: 1, fontSize: '0.7rem' } }}
-                  />
+                <Box sx={{ ml: 2 }}>
+                  <Typography variant="subtitle2">
+                    AI-ассистент {isLoading && <CircularProgress size={12} sx={{ ml: 1 }} />}
+                  </Typography>
                   
-                  {status && (
-                    <Tooltip title="Использование токенов">
-                      <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={getTokenUsagePercentage()}
-                          color={getTokenUsageStatus().color as "primary" | "secondary" | "error" | "info" | "success" | "warning"}
-                          sx={{ width: 50, height: 4, borderRadius: 2 }}
-                        />
-                      </Box>
-                    </Tooltip>
-                  )}
+                  <Box display="flex" alignItems="center">
+                    <Chip
+                      label={getStatusText()}
+                      color={getStatusColor() as "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"}
+                      size="small"
+                      sx={{ height: 20, '& .MuiChip-label': { px: 1, fontSize: '0.7rem' } }}
+                    />
+                    
+                    {status && status.tokenUsage && (
+                      <Tooltip title="Использование токенов">
+                        <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={getTokenUsagePercentage()}
+                            color={getTokenUsageStatus().color as "primary" | "secondary" | "error" | "info" | "success" | "warning"}
+                            sx={{ width: 50, height: 4, borderRadius: 2 }}
+                          />
+                        </Box>
+                      </Tooltip>
+                    )}
+                  </Box>
                 </Box>
-              </Grid>
+              </Box>
               
-              <Grid item>
-                <Tooltip title="Обновить статус">
-                  <IconButton 
-                    size="small" 
-                    onClick={loadStatus}
-                    disabled={isLoading}
-                  >
-                    <RefreshIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Grid>
-            </Grid>
+              <Tooltip title="Обновить статус">
+                <IconButton 
+                  size="small" 
+                  onClick={loadStatus}
+                  disabled={isLoading}
+                >
+                  <RefreshIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
           </CardContent>
         </Card>
       </Box>
     );
   }
   
-  // Рендер полной версии
+  // Полная версия будет более детализированной
   return (
     <Card variant="outlined">
       <CardHeader
@@ -285,242 +277,170 @@ const AIAssistantStatus: React.FC<AIAssistantStatusProps> = ({
           </Typography>
         ) : (
           <Box>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <Box 
-                  sx={{ 
-                    border: `1px solid ${theme.palette.divider}`, 
-                    borderRadius: 1, 
-                    p: 2,
-                    height: '100%'
-                  }}
-                >
-                  <Typography variant="subtitle2" gutterBottom>
-                    Статус системы
-                  </Typography>
+            {/* Базовая информация о статусе */}
+            <Box 
+              sx={{
+                display: 'grid', 
+                gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+                gap: 2
+              }}
+            >
+              {/* Статус системы */}
+              <Box 
+                sx={{ 
+                  border: `1px solid ${theme.palette.divider}`, 
+                  borderRadius: 1, 
+                  p: 2,
+                  height: '100%'
+                }}
+              >
+                <Typography variant="subtitle2" gutterBottom>
+                  Статус системы
+                </Typography>
+                
+                <Box display="flex" alignItems="center" mt={1}>
+                  {status.running ? (
+                    <CheckCircleIcon color="success" sx={{ mr: 1 }} />
+                  ) : (
+                    <ErrorIcon color="error" sx={{ mr: 1 }} />
+                  )}
                   
-                  <Box display="flex" alignItems="center" mt={1}>
-                    {status.running ? (
-                      <CheckCircleIcon color="success" sx={{ mr: 1 }} />
-                    ) : (
-                      <ErrorIcon color="error" sx={{ mr: 1 }} />
-                    )}
-                    
-                    <Typography>
-                      {status.running ? 'Активна' : 'Остановлена'}
+                  <Typography>
+                    {status.running ? 'Активна' : 'Остановлена'}
+                  </Typography>
+                </Box>
+                
+                {!status.running && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                    startIcon={<PlayCircleOutlineIcon />}
+                    sx={{ mt: 1 }}
+                    onClick={() => {
+                      enqueueSnackbar('Функция запуска AI-ассистента будет доступна в следующей версии', { 
+                        variant: 'info'
+                      });
+                    }}
+                  >
+                    Запустить ассистент
+                  </Button>
+                )}
+                
+                {status.running && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="error"
+                    startIcon={<PauseCircleOutlineIcon />}
+                    sx={{ mt: 1 }}
+                    onClick={() => {
+                      enqueueSnackbar('Функция остановки AI-ассистента будет доступна в следующей версии', { 
+                        variant: 'info'
+                      });
+                    }}
+                  >
+                    Остановить ассистент
+                  </Button>
+                )}
+              </Box>
+              
+              {/* Очередь задач */}
+              <Box 
+                sx={{ 
+                  border: `1px solid ${theme.palette.divider}`, 
+                  borderRadius: 1, 
+                  p: 2,
+                  height: '100%'
+                }}
+              >
+                <Typography variant="subtitle2" gutterBottom>
+                  Очередь задач
+                </Typography>
+                
+                <Box sx={{ mt: 1 }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                    <Typography variant="body2">Ожидают:</Typography>
+                    <Typography variant="body2" fontWeight="medium">
+                      {status.queue.statuses.pending}
                     </Typography>
                   </Box>
                   
-                  {!status.running && (
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="primary"
-                      startIcon={<PlayCircleOutlineIcon />}
-                      sx={{ mt: 1 }}
-                      onClick={() => {
-                        enqueueSnackbar('Функция запуска AI-ассистента будет доступна в следующей версии', { 
-                          variant: 'info'
-                        });
-                      }}
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                    <Typography variant="body2">В обработке:</Typography>
+                    <Typography 
+                      variant="body2" 
+                      fontWeight="medium"
+                      color={status.queue.statuses.processing > 0 ? 'warning.main' : 'text.primary'}
                     >
-                      Запустить ассистент
-                    </Button>
-                  )}
-                  
-                  {status.running && (
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="error"
-                      startIcon={<PauseCircleOutlineIcon />}
-                      sx={{ mt: 1 }}
-                      onClick={() => {
-                        enqueueSnackbar('Функция остановки AI-ассистента будет доступна в следующей версии', { 
-                          variant: 'info'
-                        });
-                      }}
-                    >
-                      Остановить ассистент
-                    </Button>
-                  )}
-                </Box>
-              </Grid>
-              
-              <Grid item xs={12} sm={4}>
-                <Box 
-                  sx={{ 
-                    border: `1px solid ${theme.palette.divider}`, 
-                    borderRadius: 1, 
-                    p: 2,
-                    height: '100%'
-                  }}
-                >
-                  <Typography variant="subtitle2" gutterBottom>
-                    Очередь задач
-                  </Typography>
-                  
-                  <List dense disablePadding>
-                    <ListItem disablePadding sx={{ py: 0.5 }}>
-                      <ListItemText primary="Ожидают" />
-                      <Typography>
-                        {status.queue.statuses.pending}
-                      </Typography>
-                    </ListItem>
-                    
-                    <ListItem disablePadding sx={{ py: 0.5 }}>
-                      <ListItemText primary="В обработке" />
-                      <Typography color={status.queue.statuses.processing > 0 ? 'warning.main' : 'text.primary'}>
-                        {status.queue.statuses.processing}
-                      </Typography>
-                    </ListItem>
-                    
-                    <ListItem disablePadding sx={{ py: 0.5 }}>
-                      <ListItemText primary="Завершены" />
-                      <Typography color="success.main">
-                        {status.queue.statuses.completed}
-                      </Typography>
-                    </ListItem>
-                    
-                    <ListItem disablePadding sx={{ py: 0.5 }}>
-                      <ListItemText primary="Ошибки" />
-                      <Typography color={status.queue.statuses.failed > 0 ? 'error.main' : 'text.primary'}>
-                        {status.queue.statuses.failed}
-                      </Typography>
-                    </ListItem>
-                  </List>
-                </Box>
-              </Grid>
-              
-              <Grid item xs={12} sm={4}>
-                <Box 
-                  sx={{ 
-                    border: `1px solid ${theme.palette.divider}`, 
-                    borderRadius: 1, 
-                    p: 2,
-                    height: '100%'
-                  }}
-                >
-                  <Typography variant="subtitle2" gutterBottom>
-                    Использование токенов
-                  </Typography>
-                  
-                  <Box sx={{ mb: 1 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Typography variant="body2">Сегодня</Typography>
-                      <Typography variant="body2">
-                        {status.tokenUsage.usage.daily.total.toLocaleString()} / {status.tokenUsage.limits.daily.toLocaleString()}
-                      </Typography>
-                    </Box>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={getTokenUsagePercentage()}
-                      color={getTokenUsageStatus().color as "primary" | "secondary" | "error" | "info" | "success" | "warning"}
-                      sx={{ height: 6, borderRadius: 3, mt: 0.5 }}
-                    />
-                    
-                    <Box display="flex" justifyContent="flex-end" mt={0.5}>
-                      <Chip
-                        label={getTokenUsageStatus().text}
-                        size="small"
-                        color={getTokenUsageStatus().color as "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"}
-                        sx={{ height: 20, '& .MuiChip-label': { px: 1, fontSize: '0.7rem' } }}
-                      />
-                    </Box>
+                      {status.queue.statuses.processing}
+                    </Typography>
                   </Box>
                   
-                  <Divider sx={{ my: 1 }} />
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                    <Typography variant="body2">Завершены:</Typography>
+                    <Typography variant="body2" fontWeight="medium" color="success.main">
+                      {status.queue.statuses.completed}
+                    </Typography>
+                  </Box>
                   
-                  <Typography variant="caption" color="text.secondary">
-                    Примерная стоимость: {status.tokenUsage.estimatedCost.total} $
-                  </Typography>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2">Ошибки:</Typography>
+                    <Typography 
+                      variant="body2" 
+                      fontWeight="medium"
+                      color={status.queue.statuses.failed > 0 ? 'error.main' : 'text.primary'}
+                    >
+                      {status.queue.statuses.failed}
+                    </Typography>
+                  </Box>
                 </Box>
-              </Grid>
-            </Grid>
-            
-            <Collapse in={expanded} timeout="auto">
-              <Box mt={2}>
-                <Divider sx={{ mb: 2 }} />
-                
-                <Typography variant="subtitle1" gutterBottom>
-                  Подробная статистика
+              </Box>
+              
+              {/* Использование токенов */}
+              <Box 
+                sx={{ 
+                  border: `1px solid ${theme.palette.divider}`, 
+                  borderRadius: 1, 
+                  p: 2,
+                  height: '100%'
+                }}
+              >
+                <Typography variant="subtitle2" gutterBottom>
+                  Использование токенов
                 </Typography>
                 
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <Box 
-                      sx={{ 
-                        border: `1px solid ${theme.palette.divider}`, 
-                        borderRadius: 1, 
-                        p: 2
-                      }}
-                    >
-                      <Typography variant="subtitle2" gutterBottom>
-                        Типы задач в очереди
-                      </Typography>
-                      
-                      <List dense disablePadding>
-                        <ListItem disablePadding sx={{ py: 0.5 }}>
-                          <ListItemText primary="Декомпозиция задач" />
-                          <Typography>
-                            {status.queue.types.decompose}
-                          </Typography>
-                        </ListItem>
-                        
-                        <ListItem disablePadding sx={{ py: 0.5 }}>
-                          <ListItemText primary="Генерация кода" />
-                          <Typography>
-                            {status.queue.types.generate_code}
-                          </Typography>
-                        </ListItem>
-                        
-                        <ListItem disablePadding sx={{ py: 0.5 }}>
-                          <ListItemText primary="Коммит кода" />
-                          <Typography>
-                            {status.queue.types.commit_code}
-                          </Typography>
-                        </ListItem>
-                      </List>
-                    </Box>
-                  </Grid>
+                <Box sx={{ mb: 1 }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2">Сегодня:</Typography>
+                    <Typography variant="body2">
+                      {status.tokenUsage.usage.daily.total.toLocaleString()} / {status.tokenUsage.limits.daily.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={getTokenUsagePercentage()}
+                    color={getTokenUsageStatus().color as "primary" | "secondary" | "error" | "info" | "success" | "warning"}
+                    sx={{ height: 6, borderRadius: 3, mt: 0.5 }}
+                  />
                   
-                  <Grid item xs={12} md={6}>
-                    <Box 
-                      sx={{ 
-                        border: `1px solid ${theme.palette.divider}`, 
-                        borderRadius: 1, 
-                        p: 2
-                      }}
-                    >
-                      <Typography variant="subtitle2" gutterBottom>
-                        Использование по моделям
-                      </Typography>
-                      
-                      {status.tokenUsage.usage.models && Object.entries(status.tokenUsage.usage.models).map(([model, data]: [string, any]) => (
-                        <Box key={model} sx={{ mb: 1 }}>
-                          <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
-                            {model} ({data.requests} запросов)
-                          </Typography>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                            <Typography variant="caption" color="text.secondary">
-                              Промпт: {data.promptTokens.toLocaleString()}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              Результат: {data.completionTokens.toLocaleString()}
-                            </Typography>
-                          </Box>
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={(data.total / data.requests / status.tokenUsage.limits.perRequest) * 100}
-                            sx={{ height: 4, borderRadius: 2, mt: 0.5 }}
-                          />
-                        </Box>
-                      ))}
-                    </Box>
-                  </Grid>
-                </Grid>
+                  <Box display="flex" justifyContent="flex-end" mt={0.5}>
+                    <Chip
+                      label={getTokenUsageStatus().text}
+                      size="small"
+                      color={getTokenUsageStatus().color as "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"}
+                      sx={{ height: 20, '& .MuiChip-label': { px: 1, fontSize: '0.7rem' } }}
+                    />
+                  </Box>
+                </Box>
+                
+                <Divider sx={{ my: 1 }} />
+                
+                <Typography variant="caption" color="text.secondary">
+                  Примерная стоимость: {status.tokenUsage.estimatedCost.total} $
+                </Typography>
               </Box>
-            </Collapse>
+            </Box>
           </Box>
         )}
       </CardContent>

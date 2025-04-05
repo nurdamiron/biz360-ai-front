@@ -1,9 +1,9 @@
 // src/components/code/CodeWorkspace.tsx
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Paper,
   Button,
   Grid,
   Divider,
@@ -16,14 +16,14 @@ import {
   Tooltip,
   IconButton,
   useTheme,
-  alpha
+  alpha,
+  Paper
 } from '@mui/material';
 
 // Иконки
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DownloadIcon from '@mui/icons-material/Download';
 import ViewSidebarIcon from '@mui/icons-material/ViewSidebar';
 import ViewSidebarOutlinedIcon from '@mui/icons-material/ViewSidebarOutlined';
@@ -32,17 +32,12 @@ import ViewSidebarOutlinedIcon from '@mui/icons-material/ViewSidebarOutlined';
 import FileExplorer from '../project/FileExplorer';
 import CodeEditorPanel from './CodeEditorPanel';
 
-// Highlight.js для подсветки синтаксиса
-import hljs from 'highlight.js';
-import 'highlight.js/styles/github.css'; // или другая тема
-
 // Хуки
 import { useSnackbar } from 'notistack';
 import { useAppDispatch } from '../../hooks/redux';
 
 // Сервисы
 import ProjectService from '../../api/services/project.service';
-import CodeGenerationService from '../../api/services/code-generation.service';
 import { CodeGeneration } from '../../types/task.types';
 
 interface CodeWorkspaceProps {
@@ -92,13 +87,13 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showFileExplorer, setShowFileExplorer] = useState(true);
   const [currentGenerationIndex, setCurrentGenerationIndex] = useState<number | null>(null);
+  const [testContent, setTestContent] = useState<{ fileName: string, content: string } | null>(null);
   
   // Определяем текущую генерацию кода (если выбрана)
   const currentGeneration = currentGenerationIndex !== null 
     ? codeGenerations[currentGenerationIndex] 
     : null;
   
-  // Обработчики
   // Переключение вкладок
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -108,13 +103,6 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
   const handleSelectFile = (filePath: string, content: string) => {
     setSelectedFile(filePath);
     setFileContent(content);
-    
-    // Подсветка синтаксиса
-    setTimeout(() => {
-      document.querySelectorAll('pre code').forEach((block) => {
-        hljs.highlightElement(block as HTMLElement);
-      });
-    }, 0);
   };
   
   // Копирование содержимого файла
@@ -135,58 +123,63 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     try {
       setIsLoading(true);
       
-      // Имитация сохранения файла (заглушка для API)
-      setTimeout(() => {
-        enqueueSnackbar(`Файл ${selectedFile} успешно сохранен`, { variant: 'success' });
-        setIsLoading(false);
-      }, 1000);
-      
-      // Здесь должен быть реальный запрос к API для сохранения файла
-      // await ProjectService.saveFileContent(projectId, selectedFile, fileContent);
+      await ProjectService.saveFileContent(projectId, selectedFile, fileContent);
+      enqueueSnackbar(`Файл ${selectedFile} успешно сохранен`, { variant: 'success' });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при сохранении файла';
       enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
       setIsLoading(false);
     }
   };
   
   // Применение сгенерированного кода к текущему файлу
-  const handleApplyGeneration = () => {
-    if (!currentGeneration) return;
-    
-    setFileContent(currentGeneration.generatedCode);
-    setSelectedFile(currentGeneration.filePath);
-    
-    // Подсветка синтаксиса
-    setTimeout(() => {
-      document.querySelectorAll('pre code').forEach((block) => {
-        hljs.highlightElement(block as HTMLElement);
-      });
-    }, 0);
-    
-    enqueueSnackbar('Сгенерированный код применен к файлу', { variant: 'success' });
-  };
-  
-  // Создание тестов для текущей генерации
-  const handleGenerateTests = async () => {
+  const handleApplyGeneration = async () => {
     if (!currentGeneration) return;
     
     try {
       setIsLoading(true);
       
-      const result = await CodeGenerationService.generateTests(currentGeneration.id);
+      // Если файл уже существует, спрашиваем подтверждение через UI
+      const confirm = window.confirm(`Вы уверены, что хотите заменить содержимое файла ${currentGeneration.filePath}?`);
       
-      enqueueSnackbar('Тесты успешно сгенерированы', { variant: 'success' });
+      if (!confirm) {
+        setIsLoading(false);
+        return;
+      }
       
-      // Обновляем выбранный файл на файл с тестами
-      handleSelectFile(result.testFileName, result.testContent);
+      // Применяем сгенерированный код к файлу
+      await ProjectService.saveFileContent(
+        projectId, 
+        currentGeneration.filePath, 
+        currentGeneration.generatedCode
+      );
       
+      // Обновляем текущее содержимое и выбранный файл
+      setFileContent(currentGeneration.generatedCode);
+      setSelectedFile(currentGeneration.filePath);
+      
+      enqueueSnackbar('Сгенерированный код успешно применен к файлу', { variant: 'success' });
+      
+      // Переключаемся на вкладку проекта
+      setActiveTab(0);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при генерации тестов';
+      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при применении кода';
       enqueueSnackbar(errorMessage, { variant: 'error' });
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  // Обработчик для тестов, созданных для генерации кода
+  const handleTestsGenerated = (testData: { testFileName: string, testContent: string }) => {
+    setTestContent({
+      fileName: testData.testFileName,
+      content: testData.testContent
+    });
+    
+    // Переключаемся на вкладку с тестами
+    setActiveTab(2);
   };
   
   // Скачивание файла
@@ -214,18 +207,13 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     const generation = codeGenerations[index];
     setFileContent(generation.generatedCode);
     setSelectedFile(generation.filePath);
-    
-    // Подсветка синтаксиса
-    setTimeout(() => {
-      document.querySelectorAll('pre code').forEach((block) => {
-        hljs.highlightElement(block as HTMLElement);
-      });
-    }, 0);
   };
   
   // Определение языка кода на основе расширения файла
-  const getLanguage = (filePath: string): string => {
-    const extension = filePath?.split('.').pop()?.toLowerCase() || '';
+  const getLanguage = (filePath: string | null): string => {
+    if (!filePath) return 'javascript';
+    
+    const extension = filePath.split('.').pop()?.toLowerCase() || '';
     
     const extensionMap: Record<string, string> = {
       'js': 'javascript',
@@ -458,7 +446,24 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
                       codeGeneration={generation}
                       taskId={taskId}
                       projectId={projectId}
+                      onTestsGenerated={handleTestsGenerated}
                     />
+                    
+                    {/* Дополнительные кнопки для взаимодействия с кодом */}
+                    {generation.status === 'approved' && (
+                      <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={() => {
+                            handleSelectGeneration(index);
+                            handleApplyGeneration();
+                          }}
+                        >
+                          Применить код к проекту
+                        </Button>
+                      </Box>
+                    )}
                   </Grid>
                 ))}
               </Grid>
@@ -469,53 +474,135 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
       
       {/* Вкладка с тестами */}
       <TabPanel value={activeTab} index={2}>
-        <Box 
-          sx={{ 
-            p: 2, 
-            textAlign: 'center', 
-            display: 'flex', 
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%'
-          }}
-        >
-          <Typography variant="h6" gutterBottom>
-            Генерация тестов для кода
-          </Typography>
-          
-          <Typography color="text.secondary" sx={{ maxWidth: 600, mb: 2 }}>
-            Выберите генерацию кода, для которой нужно создать тесты. 
-            AI-ассистент автоматически создаст тестовые сценарии для проверки работоспособности кода.
-          </Typography>
-          
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleGenerateTests}
-              disabled={currentGenerationIndex === null || isLoading}
+        {testContent ? (
+          <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                p: 1, 
+                mb: 2,
+                borderBottom: `1px solid ${theme.palette.divider}`
+              }}
             >
-              {isLoading ? (
-                <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
-              ) : null}
-              Сгенерировать тесты
-            </Button>
+              <Typography variant="subtitle1">
+                {testContent.fileName}
+              </Typography>
+              
+              <Box>
+                <Tooltip title="Копировать тесты">
+                  <IconButton 
+                    size="small" 
+                    onClick={() => {
+                      navigator.clipboard.writeText(testContent.content);
+                      enqueueSnackbar('Тесты скопированы в буфер обмена', { variant: 'success' });
+                    }}
+                  >
+                    <ContentCopyIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                
+                {!readOnly && (
+                  <Tooltip title="Сохранить тесты в проект">
+                    <IconButton 
+                      size="small" 
+                      color="primary"
+                      sx={{ ml: 1 }}
+                      onClick={async () => {
+                        try {
+                          setIsLoading(true);
+                          await ProjectService.saveFileContent(
+                            projectId,
+                            testContent.fileName,
+                            testContent.content
+                          );
+                          enqueueSnackbar('Тесты успешно сохранены в проект', { variant: 'success' });
+                        } catch (error) {
+                          const errorMessage = error instanceof Error 
+                            ? error.message 
+                            : 'Произошла ошибка при сохранении тестов';
+                          enqueueSnackbar(errorMessage, { variant: 'error' });
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                    >
+                      <SaveIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            </Box>
             
-            {codeGenerations.length > 0 && (
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setCurrentGenerationIndex(0);
-                  handleSelectGeneration(0);
+            <Box 
+              sx={{ 
+                flexGrow: 1, 
+                overflow: 'auto', 
+                bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+              }}
+            >
+              <Box
+                component="pre"
+                sx={{
+                  margin: 0,
+                  height: '100%',
+                  overflow: 'auto',
+                  '& code': {
+                    fontFamily: '"Fira Code", Consolas, Monaco, "Andale Mono", monospace',
+                    fontSize: '0.875rem',
+                    p: 2,
+                    display: 'block',
+                  }
                 }}
-                disabled={currentGenerationIndex !== null}
               >
-                Выбрать генерацию
-              </Button>
-            )}
+                <code className={`language-${getLanguage(testContent.fileName)}`}>
+                  {testContent.content}
+                </code>
+              </Box>
+            </Box>
           </Box>
-        </Box>
+        ) : (
+          <Box 
+            sx={{ 
+              p: 2, 
+              textAlign: 'center', 
+              display: 'flex', 
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%'
+            }}
+          >
+            <Typography variant="h6" gutterBottom>
+              Генерация тестов для кода
+            </Typography>
+            
+            <Typography color="text.secondary" sx={{ maxWidth: 600, mb: 2 }}>
+              Выберите генерацию кода, для которой нужно создать тесты. 
+              AI-ассистент автоматически создаст тестовые сценарии для проверки работоспособности кода.
+            </Typography>
+            
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => {
+                  if (codeGenerations.length > 0) {
+                    // Выбираем первую генерацию для создания тестов
+                    setCurrentGenerationIndex(0);
+                    setActiveTab(1); // Переключаемся на вкладку с генерациями
+                    enqueueSnackbar('Выберите код для генерации тестов и нажмите "Создать тесты"', { variant: 'info' });
+                  } else {
+                    enqueueSnackbar('Сначала нужно сгенерировать код', { variant: 'warning' });
+                  }
+                }}
+              >
+                Перейти к выбору кода
+              </Button>
+            </Box>
+          </Box>
+        )}
       </TabPanel>
     </Box>
   );

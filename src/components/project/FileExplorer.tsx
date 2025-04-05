@@ -119,24 +119,22 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ projectId, onSelectFile, re
     }
   };
   
-  // Обработчик клика по папке или файлу
-  const handleItemClick = async (item: FileNode) => {
+  
+
+  // Обработчик клика по файлу
+const handleItemClick = async (item: FileNode) => {
     if (item.type === 'directory') {
-      // Переключение состояния развертывания для папки
-      const newExpandedPaths = new Set(expandedPaths);
-      if (newExpandedPaths.has(item.path)) {
-        newExpandedPaths.delete(item.path);
-      } else {
-        newExpandedPaths.add(item.path);
-      }
-      setExpandedPaths(newExpandedPaths);
+      // Если это директория, обновляем текущий путь и загружаем содержимое
+      setCurrentPath(item.path);
     } else {
-      // Обработка выбора файла
+      // Если это файл, получаем его содержимое
       setSelectedFile(item.path);
       
       try {
         setIsLoading(true);
         const content = await ProjectService.getFileContent(projectId, item.path);
+        
+        // Вызываем колбэк для отображения содержимого файла
         onSelectFile(item.path, content);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Ошибка при загрузке содержимого файла';
@@ -146,6 +144,93 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ projectId, onSelectFile, re
       }
     }
   };
+  
+  // Функция для создания нового файла
+  const createFile = async (fileName: string, content: string = '') => {
+    if (!fileName.trim()) {
+      enqueueSnackbar('Имя файла не может быть пустым', { variant: 'error' });
+      return false;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      // Полный путь к новому файлу
+      const filePath = currentPath ? `${currentPath}/${fileName}` : fileName;
+      
+      // Вызов API для создания файла
+      await ProjectService.saveFileContent(projectId, filePath, content);
+      
+      enqueueSnackbar(`Файл ${fileName} успешно создан`, { variant: 'success' });
+      
+      // Обновляем список файлов
+      await loadFiles();
+      
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при создании файла';
+      enqueueSnackbar(`Не удалось создать файл: ${errorMessage}`, { variant: 'error' });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Функция для создания новой папки
+const createFolder = async (folderName: string) => {
+    if (!folderName.trim()) {
+      enqueueSnackbar('Имя папки не может быть пустым', { variant: 'error' });
+      return false;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      // Полный путь к новой папке
+      const folderPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+      
+      // Вызов API для создания папки
+      await ProjectService.createFolder(projectId, folderPath);
+      
+      enqueueSnackbar(`Папка ${folderName} успешно создана`, { variant: 'success' });
+      
+      // Обновляем список файлов
+      await loadFiles();
+      
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при создании папки';
+      enqueueSnackbar(`Не удалось создать папку: ${errorMessage}`, { variant: 'error' });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Функция для удаления файла или папки
+  const deleteFileOrFolder = async (path: string, isDirectory: boolean) => {
+    try {
+      setIsLoading(true);
+      
+      // Вызов API для удаления
+      await ProjectService.deleteFileOrFolder(projectId, path);
+      
+      const itemType = isDirectory ? 'Папка' : 'Файл';
+      enqueueSnackbar(`${itemType} успешно удален`, { variant: 'success' });
+      
+      // Обновляем список файлов
+      await loadFiles();
+      
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при удалении';
+      enqueueSnackbar(`Не удалось удалить: ${errorMessage}`, { variant: 'error' });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   
   // Обработчик навигации к родительской папке
   const handleNavigateUp = () => {
@@ -193,61 +278,25 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ projectId, onSelectFile, re
   
   // Функция подтверждения создания файла
   const confirmCreateFile = async () => {
-    if (!newItemName.trim()) {
-      enqueueSnackbar('Имя файла не может быть пустым', { variant: 'error' });
-      return;
-    }
-
-    try {
-      // Здесь будет вызов API для создания файла
-      // Имитация успешного создания
-      enqueueSnackbar(`Файл ${newItemName} успешно создан`, { variant: 'success' });
+    if (await createFile(newItemName)) {
       setNewFileDialogOpen(false);
-      
-      // Перезагрузка файлов после создания
-      loadFiles();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Ошибка при создании файла';
-      enqueueSnackbar(`Не удалось создать файл: ${errorMessage}`, { variant: 'error' });
+      setNewItemName('');
     }
   };
   
-  // Функция подтверждения создания папки
   const confirmCreateFolder = async () => {
-    if (!newItemName.trim()) {
-      enqueueSnackbar('Имя папки не может быть пустым', { variant: 'error' });
-      return;
-    }
-
-    try {
-      // Здесь будет вызов API для создания папки
-      // Имитация успешного создания
-      enqueueSnackbar(`Папка ${newItemName} успешно создана`, { variant: 'success' });
+    if (await createFolder(newItemName)) {
       setNewFolderDialogOpen(false);
-      
-      // Перезагрузка файлов после создания
-      loadFiles();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Ошибка при создании папки';
-      enqueueSnackbar(`Не удалось создать папку: ${errorMessage}`, { variant: 'error' });
+      setNewItemName('');
     }
   };
-  
   // Функция подтверждения удаления
   const confirmDelete = async () => {
     if (!contextMenuTarget) return;
-
-    try {
-      // Здесь будет вызов API для удаления файла/папки
-      // Имитация успешного удаления
-      enqueueSnackbar(`${contextMenuTarget.name} успешно удален`, { variant: 'success' });
+    
+    if (await deleteFileOrFolder(contextMenuTarget.path, contextMenuTarget.type === 'directory')) {
       setDeleteDialogOpen(false);
-      
-      // Перезагрузка файлов после удаления
-      loadFiles();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Ошибка при удалении';
-      enqueueSnackbar(`Не удалось удалить: ${errorMessage}`, { variant: 'error' });
+      setContextMenuTarget(null);
     }
   };
   

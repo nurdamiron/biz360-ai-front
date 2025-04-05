@@ -41,9 +41,6 @@ import { useAppDispatch } from '../../hooks/redux';
 import { reviewCode } from '../../store/slices/tasksSlice';
 import { regenerateCode, sendFeedback, analyzeFailedGeneration } from '../../store/slices/aiAssistantSlice';
 
-// Highlight.js для подсветки синтаксиса
-import hljs from 'highlight.js';
-import 'highlight.js/styles/github.css'; // или любая другая тема
 import { useEffect } from 'react';
 
 interface CodeEditorPanelProps {
@@ -74,7 +71,6 @@ const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
   // Определение языка кода на основе расширения файла
   const getLanguage = (filePath: string): string => {
     const extension = filePath.split('.').pop()?.toLowerCase() || '';
-    
     const extensionMap: Record<string, string> = {
       'js': 'javascript',
       'jsx': 'javascript',
@@ -94,7 +90,6 @@ const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
       'php': 'php',
       'sql': 'sql',
     };
-    
     return extensionMap[extension] || 'javascript';
   };
   
@@ -103,8 +98,9 @@ const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
 
   // Обработка подсветки синтаксиса после рендеринга
   useEffect(() => {
+    // Применяем базовую стилизацию для блока кода
     document.querySelectorAll('pre code').forEach((block) => {
-      hljs.highlightElement(block as HTMLElement);
+      (block as HTMLElement).style.fontFamily = '"Fira Code", monospace';
     });
   }, [codeGeneration, expanded]);
   
@@ -113,14 +109,15 @@ const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
     setFeedbackDialogOpen(true);
   };
   
-  // Обработчик отклонения кода
-  const handleReject = () => {
-    setRegenerateDialogOpen(true);
-  };
+  
   
   // Обработчик отправки обратной связи
   const handleSubmitFeedback = async () => {
+    if (!codeGeneration) return;
+    
     try {
+      setIsLoading(true);
+      
       // Отправляем статус кода (одобрен)
       await dispatch(reviewCode({
         generationId: codeGeneration.id,
@@ -141,17 +138,30 @@ const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
       setFeedbackDialogOpen(false);
       setFeedback('');
       setRating(3);
+      
+      enqueueSnackbar('Код успешно одобрен', { variant: 'success' });
     } catch (error) {
       enqueueSnackbar(
         error instanceof Error ? error.message : 'Произошла ошибка при отправке обратной связи', 
         { variant: 'error' }
       );
+    } finally {
+      setIsLoading(false);
     }
   };
   
   // Обработчик регенерации кода
   const handleRegenerateCode = async () => {
+    if (!codeGeneration) return;
+    
+    if (!regenerateFeedback.trim()) {
+      enqueueSnackbar('Пожалуйста, укажите причину отклонения кода', { variant: 'warning' });
+      return;
+    }
+    
     try {
+      setIsLoading(true);
+      
       // Отправляем статус кода (отклонен)
       await dispatch(reviewCode({
         generationId: codeGeneration.id,
@@ -168,14 +178,24 @@ const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
       
       setRegenerateDialogOpen(false);
       setRegenerateFeedback('');
+      
+      enqueueSnackbar('Запрос на регенерацию кода отправлен', { variant: 'success' });
     } catch (error) {
       enqueueSnackbar(
         error instanceof Error ? error.message : 'Произошла ошибка при регенерации кода', 
         { variant: 'error' }
       );
+    } finally {
+      setIsLoading(false);
     }
   };
   
+  
+  // Обработчик отклонения кода
+  const handleReject = () => {
+    setRegenerateDialogOpen(true);
+  };
+
   // Обработчик копирования кода в буфер обмена
   const handleCopyCode = () => {
     navigator.clipboard.writeText(codeGeneration.generatedCode).then(() => {
@@ -188,7 +208,11 @@ const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
   
   // Обработчик анализа проблемы с генерацией (для неудачных генераций)
   const handleAnalyzeFailure = async () => {
+    if (!codeGeneration) return;
+    
     try {
+      setIsLoading(true);
+      
       const result = await dispatch(analyzeFailedGeneration({
         projectId,
         generationId: codeGeneration.id
@@ -196,13 +220,44 @@ const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
       
       setFailedAnalysis(result.analysis);
       setShowAnalysis(true);
+      
+      enqueueSnackbar('Анализ завершен успешно', { variant: 'success' });
     } catch (error) {
       enqueueSnackbar(
         error instanceof Error ? error.message : 'Произошла ошибка при анализе генерации', 
         { variant: 'error' }
       );
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const handleGenerateTests = async () => {
+    if (!codeGeneration) return;
+    
+    try {
+      setIsLoading(true);
+      
+      const result = await dispatch(generateTests(codeGeneration.id)).unwrap();
+      
+      enqueueSnackbar('Тесты успешно сгенерированы', { variant: 'success' });
+      
+      // Оповещаем родительский компонент о созданных тестах
+      // Предполагаем, что у нас есть пропс onTestsGenerated
+      if (onTestsGenerated && result) {
+        onTestsGenerated(result);
+      }
+    } catch (error) {
+      enqueueSnackbar(
+        error instanceof Error ? error.message : 'Произошла ошибка при генерации тестов', 
+        { variant: 'error' }
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  
   
   // Отображение статуса кода
   const renderStatusChip = () => {
@@ -290,8 +345,8 @@ const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
                 </IconButton>
               </Tooltip>
             </Box>
-            <code className={`language-${language}`}>
-              {codeGeneration.generatedCode}
+            <code className={`language-${getLanguage(selectedFile)}`}>
+              {fileContent}
             </code>
           </Box>
         </CardContent>

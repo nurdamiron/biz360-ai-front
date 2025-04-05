@@ -2,38 +2,48 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import AIAssistantService from '../../api/services/ai-assistant.service';
 import { enqueueSnackbar } from 'notistack';
+import { 
+  AIAssistantStatus, 
+  TaskRecommendations, 
+  FailedGenerationAnalysis,
+  RegenerateCodeRequest,
+  RegenerateCodeResponse,
+  CodeFeedbackRequest,
+  AIAssistantState
+} from '../../types/code-generation.types';
+import CodeGenerationService from '../../api/services/code-generation.service';
 
-// Интерфейс для статуса AI-ассистента
-interface AIAssistantStatus {
-  running: boolean;
-  queue: {
-    statuses: {
-      pending: number;
-      processing: number;
-      completed: number;
-      failed: number;
-    };
-    types: {
-      decompose: number;
-      generate_code: number;
-      commit_code: number;
-    };
-  };
-  tokenUsage: {
-    usage: any;
-    limits: any;
-    estimatedCost: any;
-  };
-}
+// // Интерфейс для статуса AI-ассистента
+// interface AIAssistantStatus {
+//   running: boolean;
+//   queue: {
+//     statuses: {
+//       pending: number;
+//       processing: number;
+//       completed: number;
+//       failed: number;
+//     };
+//     types: {
+//       decompose: number;
+//       generate_code: number;
+//       commit_code: number;
+//     };
+//   };
+//   tokenUsage: {
+//     usage: any;
+//     limits: any;
+//     estimatedCost: any;
+//   };
+// }
 
-// Интерфейс для состояния
-interface AIAssistantState {
-  status: AIAssistantStatus | null;
-  performanceReport: any | null;
-  recommendations: any | null;
-  isLoading: boolean;
-  error: string | null;
-}
+// // Интерфейс для состояния
+// interface AIAssistantState {
+//   status: AIAssistantStatus | null;
+//   performanceReport: any | null;
+//   recommendations: any | null;
+//   isLoading: boolean;
+//   error: string | null;
+// }
 
 // Начальное состояние
 const initialState: AIAssistantState = {
@@ -85,7 +95,7 @@ export const analyzeFailedGeneration = createAsyncThunk(
   'aiAssistant/analyzeFailedGeneration',
   async ({ projectId, generationId }: { projectId: number; generationId: number }, { rejectWithValue }) => {
     try {
-      const result = await AIAssistantService.analyzeFailedGeneration(projectId, generationId);
+      const result = await CodeGenerationService.analyzeFailedGeneration(projectId, generationId);
       return result;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Ошибка при анализе неудачной генерации');
@@ -95,9 +105,9 @@ export const analyzeFailedGeneration = createAsyncThunk(
 
 export const regenerateCode = createAsyncThunk(
   'aiAssistant/regenerateCode',
-  async (params: { generationId: number; taskId: number; feedback?: string }, { rejectWithValue }) => {
+  async (params: RegenerateCodeRequest, { rejectWithValue }) => {
     try {
-      const result = await AIAssistantService.regenerateCode(params);
+      const result = await CodeGenerationService.regenerateCode(params.generationId, params.taskId, params.feedback || '');
       enqueueSnackbar('Код успешно регенерирован', { variant: 'success' });
       return result;
     } catch (error: any) {
@@ -106,15 +116,45 @@ export const regenerateCode = createAsyncThunk(
   }
 );
 
+export const generateTests = createAsyncThunk(
+  'aiAssistant/generateTests',
+  async (generationId: number, { rejectWithValue }) => {
+    try {
+      const result = await CodeGenerationService.generateTests(generationId);
+      return result;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Ошибка при генерации тестов');
+    }
+  }
+);
+
 export const sendFeedback = createAsyncThunk(
   'aiAssistant/sendFeedback',
-  async (params: { projectId: number; generationId: number; feedbackText: string; rating: number }, { rejectWithValue }) => {
+  async (params: CodeFeedbackRequest, { rejectWithValue }) => {
     try {
-      const result = await AIAssistantService.sendFeedback(params);
+      const result = await CodeGenerationService.sendFeedback(params);
       enqueueSnackbar('Обратная связь успешно отправлена', { variant: 'success' });
       return result;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Ошибка при отправке обратной связи');
+    }
+  }
+);
+
+
+export const createPullRequest = createAsyncThunk(
+  'aiAssistant/createPullRequest',
+  async (params: { generationIds: number[]; title: string; description: string; branch: string }, { rejectWithValue }) => {
+    try {
+      const result = await CodeGenerationService.createPullRequest(params.generationIds, {
+        title: params.title,
+        description: params.description,
+        branch: params.branch
+      });
+      enqueueSnackbar('Pull request успешно создан', { variant: 'success' });
+      return result;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Ошибка при создании pull request');
     }
   }
 );
@@ -173,6 +213,71 @@ const aiAssistantSlice = createSlice({
       state.isLoading = false;
       state.error = action.payload as string;
     });
+
+    builder.addCase(generateTests.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(generateTests.fulfilled, (state) => {
+      state.isLoading = false;
+    });
+    builder.addCase(generateTests.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload as string;
+    });
+    
+    // Обработка анализа неудачной генерации
+    builder.addCase(analyzeFailedGeneration.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(analyzeFailedGeneration.fulfilled, (state) => {
+      state.isLoading = false;
+    });
+    builder.addCase(analyzeFailedGeneration.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload as string;
+    });
+    
+    // Обработка регенерации кода
+    builder.addCase(regenerateCode.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(regenerateCode.fulfilled, (state) => {
+      state.isLoading = false;
+    });
+    builder.addCase(regenerateCode.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload as string;
+    });
+    
+    // Обработка отправки обратной связи
+    builder.addCase(sendFeedback.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(sendFeedback.fulfilled, (state) => {
+      state.isLoading = false;
+    });
+    builder.addCase(sendFeedback.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload as string;
+    });
+    
+    // Обработка создания pull request
+    builder.addCase(createPullRequest.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(createPullRequest.fulfilled, (state) => {
+      state.isLoading = false;
+    });
+    builder.addCase(createPullRequest.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload as string;
+    });
+    
   }
 });
 

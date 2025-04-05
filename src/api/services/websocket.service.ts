@@ -1,5 +1,5 @@
 // src/services/websocket.service.ts
-import { getWsUrl } from '../config/api.config';
+import { getWsUrl } from '../../config/api.config';
 
 export enum WebSocketState {
   CONNECTING = 'connecting',

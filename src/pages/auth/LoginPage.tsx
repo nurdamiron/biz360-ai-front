@@ -91,9 +91,22 @@ const LoginPage: React.FC = () => {
   };
   
   // Обработчик входа
-  const handleLogin = () => {
-    if (validateForm()) {
-      dispatch(login({ username, password }));
+  // Пример входа в систему
+const handleLogin = async () => {
+    try {
+      const result = await dispatch(login({ 
+        username, 
+        password 
+      })).unwrap();
+      
+      // Сохранение токена и данных пользователя
+      localStorage.setItem('auth_token', result.token);
+      
+      // Переход на приборную панель
+      navigate('/dashboard');
+    } catch (error) {
+      // Обработка ошибок входа
+      enqueueSnackbar('Ошибка входа', { variant: 'error' });
     }
   };
   

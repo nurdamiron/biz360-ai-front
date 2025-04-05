@@ -19,7 +19,7 @@ import {
   ListItemText
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Project } from '../../store/slices/projectsSlice';
+import { Project } from '../../store/slices/projectsSlice'
 
 // Иконки Material UI
 import VisibilityIcon from '@mui/icons-material/Visibility';

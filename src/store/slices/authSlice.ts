@@ -1,125 +1,154 @@
 // src/store/slices/authSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import AuthService from '../../services/auth.service';
-import { AuthState, User } from '../../types/user.types';
-import websocketService from '../../services/websocket.service';
+import { AuthState, User, LoginCredentials } from '../../types/user.types';
+import AuthService from '../../api/services/auth.service';
+import websocketService from '../../api/services/websocket.service';
+import { enqueueSnackbar } from 'notistack';
 
 // Начальное состояние
 const initialState: AuthState = {
-    user: null,
-    token: localStorage.getItem('auth_token'),
-    isLoggedIn: !!localStorage.getItem('auth_token'), // исправлено с 'authtoken'
-    isLoading: false,
-    error: null,
-  };
+  user: null,
+  token: localStorage.getItem('auth_token'),
+  isLoggedIn: !!localStorage.getItem('auth_token'),
+  isLoading: false,
+  error: null
+};
 
-// Асинхронный экшен для логина
+// Асинхронные действия (thunks)
 export const login = createAsyncThunk(
   'auth/login',
-  async ({ username, password }: { username: string; password: string }, { rejectWithValue }) => {
+  async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      const response = await AuthService.login({ username, password });
+      const response = await AuthService.login(credentials);
       
-      // Устанавливаем токен для WebSocket сервиса
+      // Подключаем WebSocket при успешной авторизации
       if (response.token) {
         websocketService.setAuthToken(response.token);
-        
-        // Подключаемся к WebSocket после успешной авторизации
         websocketService.connect();
       }
       
       return response;
     } catch (error: any) {
-      if (error.response && error.response.data) {
-        return rejectWithValue(error.response.data.message || 'Ошибка авторизации');
-      }
-      return rejectWithValue('Ошибка сети. Пожалуйста, проверьте соединение.');
+      return rejectWithValue(error.message || 'Ошибка при входе в систему');
     }
   }
 );
 
-// Асинхронный экшен для получения данных пользователя
 export const fetchUser = createAsyncThunk(
-    'auth/fetchUser',
-    async (_, { rejectWithValue }) => { // добавлен параметр '_'
-      try {
-        return await AuthService.getUser();
-      } catch (error: any) {
-        if (error.response && error.response.data) {
-          return rejectWithValue(error.response.data.message || 'Ошибка получения данных пользователя');
-        }
-        return rejectWithValue('Ошибка сети. Пожалуйста, проверьте соединение.');
-      }
+  'auth/fetchUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      const user = await AuthService.getCurrentUser();
+      return user;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Ошибка при получении данных пользователя');
     }
-  );
+  }
+);
 
-// Асинхронный экшен для выхода из системы
+export const refreshToken = createAsyncThunk(
+  'auth/refreshToken',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = await AuthService.refreshToken();
+      return { token };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Ошибка при обновлении токена');
+    }
+  }
+);
+
 export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { dispatch }) => {
-    // Отключаем WebSocket перед выходом
-    websocketService.disconnect();
-    
-    // Выход из системы
-    AuthService.logout();
-    
-    return null;
+    try {
+      // Отключаем WebSocket при выходе
+      websocketService.disconnect();
+      
+      // Выполняем выход
+      AuthService.logout();
+      
+      // Показываем уведомление
+      enqueueSnackbar('Вы успешно вышли из системы', { 
+        variant: 'info',
+        autoHideDuration: 3000
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Ошибка при выходе из системы:', error);
+      return false;
+    }
   }
 );
 
-// Создаем слайс
+// Создаем slice
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    // Действие для очистки ошибок
-    clearError: (state) => {
+    // Очистка сообщения об ошибке
+    clearError(state) {
       state.error = null;
     },
+    
+    // Установка токена вручную
+    setToken(state, action: PayloadAction<string>) {
+      state.token = action.payload;
+      state.isLoggedIn = true;
+    },
+    
+    // Установка пользователя вручную
+    setUser(state, action: PayloadAction<User>) {
+      state.user = action.payload;
+      state.isLoggedIn = true;
+    }
   },
   extraReducers: (builder) => {
-    // Обработка логина
-    builder
-      .addCase(login.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(login.fulfilled, (state, action: PayloadAction<{ token: string; user: User }>) => {
-        state.isLoading = false;
-        state.isLoggedIn = true;
-        state.token = action.payload.token;
-        state.user = action.payload.user;
-      })
-      .addCase(login.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      });
+    // Обработка входа в систему
+    builder.addCase(login.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(login.fulfilled, (state, action) => {
+      state.isLoading = false;
+      state.isLoggedIn = true;
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+    });
+    builder.addCase(login.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload as string;
+    });
     
-    // Обработка получения данных пользователя
-    builder
-      .addCase(fetchUser.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(fetchUser.fulfilled, (state, action: PayloadAction<User>) => {
-        state.isLoading = false;
-        state.user = action.payload;
-      })
-      .addCase(fetchUser.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      });
+    // Обработка получения пользователя
+    builder.addCase(fetchUser.pending, (state) => {
+      state.isLoading = true;
+    });
+    builder.addCase(fetchUser.fulfilled, (state, action) => {
+      state.isLoading = false;
+      state.user = action.payload;
+      state.isLoggedIn = true;
+    });
+    builder.addCase(fetchUser.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload as string;
+    });
     
-    // Обработка выхода из системы
-    builder
-      .addCase(logout.fulfilled, (state) => {
-        state.isLoggedIn = false;
-        state.token = null;
-        state.user = null;
-      });
-  },
+    // Обработка обновления токена
+    builder.addCase(refreshToken.fulfilled, (state, action) => {
+      state.token = action.payload.token;
+    });
+    
+    // Обработка выхода
+    builder.addCase(logout.fulfilled, (state) => {
+      state.isLoggedIn = false;
+      state.user = null;
+      state.token = null;
+    });
+  }
 });
 
-// Экспорт экшенов и редьюсера
-export const { clearError } = authSlice.actions;
+// Экспорт actions и reducer
+export const { clearError, setToken, setUser } = authSlice.actions;
 export default authSlice.reducer;

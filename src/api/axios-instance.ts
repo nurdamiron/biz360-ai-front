@@ -1,6 +1,9 @@
 // src/api/axios-instance.ts
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { getApiBaseUrl } from '../config/api.config';
+import { store } from '../store';
+import { logout, setToken } from '../store/slices/authSlice';
+import { enqueueSnackbar } from 'notistack';
 
 // Создаем глобальный state для индикатора загрузки
 let requestCount = 0;
@@ -11,7 +14,6 @@ const updateLoadingState = (isLoading: boolean) => {
   requestCount = isLoading ? requestCount + 1 : requestCount - 1;
   
   // Отображаем или скрываем глобальный индикатор загрузки
-  // Например, через событие или другой механизм
   const event = new CustomEvent('api-loading-state-changed', { 
     detail: { isLoading: requestCount > 0 } 
   });
@@ -34,11 +36,10 @@ apiClient.interceptors.request.use(
     // Добавляем авторизационный токен, если он есть
     const token = localStorage.getItem('auth_token');
     if (token) {
-      // Добавлены обратные кавычки для шаблонной строки
-config.headers = {
-    ...config.headers,
-    Authorization: `Bearer ${token}`,
-  };
+      config.headers = {
+        ...config.headers,
+        Authorization: `Bearer ${token}`,
+      };
     }
     
     // Включаем индикатор загрузки, если запрос не помечен как silent
@@ -70,22 +71,79 @@ apiClient.interceptors.response.use(
     updateLoadingState(false);
     
     // Получаем конфиг и ответ
-    const { config, response } = error;
+    const originalRequest = error.config;
     
     // Если ошибка 401 (Unauthorized) и это не запрос на обновление токена
-    if (response?.status === 401 && config?.url !== '/auth/refresh-token') {
-      // Можно добавить логику для обновления токена
-      // ...
+    if (error.response?.status === 401 && 
+        originalRequest && 
+        originalRequest.url !== '/auth/refresh-token' &&
+        !originalRequest._retry) {
       
-      // Выход из системы при неудачном обновлении токена
-      localStorage.removeItem('auth_token');
-      window.location.href = '/login';
+      originalRequest._retry = true;
+      
+      try {
+        // Пытаемся обновить токен
+        const { data } = await apiClient.post<{ token: string }>('/auth/refresh-token');
+        
+        if (data.token) {
+          // Сохраняем новый токен
+          localStorage.setItem('auth_token', data.token);
+          // Обновляем токен в Redux
+          store.dispatch(setToken(data.token));
+          
+          // Обновляем заголовок в текущем запросе
+          originalRequest.headers = {
+            ...originalRequest.headers,
+            Authorization: `Bearer ${data.token}`
+          };
+          
+          // Повторяем запрос с новым токеном
+          return apiClient(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error('Не удалось обновить токен:', refreshError);
+        
+        // Выход из системы при неудачном обновлении токена
+        store.dispatch(logout());
+        
+        // Показываем уведомление
+        enqueueSnackbar('Сессия истекла. Пожалуйста, войдите снова.', { 
+          variant: 'warning',
+          autoHideDuration: 3000
+        });
+        
+        return Promise.reject(refreshError);
+      }
     }
     
-    // Обработка других ошибок
-    // Можно добавить глобальную обработку ошибок и уведомления
+    // Формируем сообщение об ошибке
+    let errorMessage = 'Произошла ошибка при обращении к серверу';
     
-    return Promise.reject(error);
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    // Если не режим silent, показываем уведомление об ошибке
+    if (!(originalRequest?.headers?.['silent'] === true)) {
+      enqueueSnackbar(errorMessage, { 
+        variant: 'error',
+        autoHideDuration: 5000
+      });
+    }
+    
+    // Создаем улучшенный объект ошибки
+    const enhancedError = {
+      ...error,
+      message: errorMessage,
+      status: error.response?.status,
+      timestamp: new Date().toISOString()
+    };
+    
+    return Promise.reject(enhancedError);
   }
 );
 

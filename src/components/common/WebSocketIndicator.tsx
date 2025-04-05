@@ -1,8 +1,8 @@
 // src/components/common/WebSocketIndicator.tsx
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Badge, Tooltip, Box, Typography } from '@mui/material';
 import useWebSocket from '../../hooks/useWebSocket';
-import { WebSocketState } from '../../services/websocket.service';
+import { WebSocketState } from '../../api/services/websocket.service';
 
 const WebSocketIndicator: React.FC = () => {
   const { state, isConnected } = useWebSocket();

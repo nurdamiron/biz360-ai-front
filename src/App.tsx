@@ -7,6 +7,7 @@ import { fetchUser } from './store/slices/authSlice';
 import { SnackbarProvider } from 'notistack';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
+import useWebSocketIntegration from './hooks/useWebSocketIntegration';
 
 // Компоненты для маршрутизации
 import PrivateRoute from './components/common/PrivateRoute';
@@ -35,6 +36,8 @@ function App() {
   const dispatch = useAppDispatch();
   const { isLoggedIn } = useAppSelector(state => state.auth);
   
+  useWebSocketIntegration();
+
   // Состояние для выбора режима темы (светлая/темная)
   const [mode, setMode] = useState<PaletteMode>(
     localStorage.getItem('themeMode') as PaletteMode || 'light'

@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import websocketService, { 
   WebSocketState, 
   MessageHandler 
-} from '../services/websocket.service';
+} from '../api/services/websocket.service';
 import { useAppDispatch } from './redux';
 import { updateTaskFromWebSocket, addTaskLogFromWebSocket } from '../store/slices/tasksSlice';
 import { Task, TaskLog } from '../types/task.types';

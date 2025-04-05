@@ -37,6 +37,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import InfoIcon from '@mui/icons-material/Info';
 import WarningIcon from '@mui/icons-material/Warning';
 import UpdateIcon from '@mui/icons-material/Update';
+import TaskRecommendations from '../../components/ai/TaskRecommendations';
 
 import { useSnackbar } from 'notistack';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -44,7 +45,8 @@ import {
   fetchTaskById, 
   fetchTaskLogs, 
   processTask,
-  clearSelectedTask 
+  clearSelectedTask,
+  updateTaskFromWebSocket
 } from '../../store/slices/tasksSlice';
 import { 
   Task, 
@@ -98,46 +100,42 @@ const TaskDetailPage: React.FC = () => {
   // Локальное состояние для обновления логов в реальном времени
   const [logs, setLogs] = useState<TaskLog[]>([]);
   
+
+  // Добавить эти функции перед useEffect с WebSocket
+const handleTaskUpdate = (data: Task) => {
+  // Обновляем задачу из WebSocket
+  dispatch(updateTaskFromWebSocket(data));
+};
+
+const handleLogsUpdate = (data: { log: TaskLog } | TaskLog) => {
+  // Обработка двух возможных форматов данных
+  const log = 'log' in data ? data.log : data;
+  
+  if (log && log.taskId) {
+    setLogs(prevLogs => [log, ...prevLogs]);
+  }
+};
+
   // Загружаем данные о задаче при монтировании
-  useEffect(() => {
-    if (taskId) {
-      dispatch(fetchTaskById(Number(taskId)));
-      dispatch(fetchTaskLogs({ taskId: Number(taskId), limit: 50 }));
-    }
+  // Загружаем данные о задаче и настраиваем WebSocket
+useEffect(() => {
+  if (taskId) {
+    // Загружаем данные о задаче
+    dispatch(fetchTaskById(Number(taskId)));
+    dispatch(fetchTaskLogs({ taskId: Number(taskId), limit: 50 }));
     
-    // Очищаем выбранную задачу при размонтировании
+    // Настраиваем WebSocket подписки
+    subscribe(`task`, Number(taskId), handleTaskUpdate);
+    subscribe(`task_logs`, Number(taskId), handleLogsUpdate);
+    
+    // Отписываемся при размонтировании
     return () => {
       dispatch(clearSelectedTask());
+      unsubscribe(`task`, Number(taskId), handleTaskUpdate);
+      unsubscribe(`task_logs`, Number(taskId), handleLogsUpdate);
     };
-  }, [dispatch, taskId]);
-  
-  // Подписываемся на обновления задачи через WebSocket
-  useEffect(() => {
-    if (taskId) {
-      // Обработчик для обновления задачи
-      const handleTaskUpdate = (data: Task) => {
-        // Обновление придет через Redux
-        console.log('Task updated via WebSocket:', data);
-      };
-      
-      // Обработчик для обновления логов
-      const handleLogsUpdate = (data: { log: TaskLog }) => {
-        if (data.log) {
-          setLogs(prevLogs => [data.log, ...prevLogs]);
-        }
-      };
-      
-      // Подписываемся на обновления задачи и логов
-      subscribe(`task`, Number(taskId), handleTaskUpdate);
-      subscribe(`task_logs`, Number(taskId), handleLogsUpdate);
-      
-      // Отписываемся при размонтировании
-      return () => {
-        unsubscribe(`task`, Number(taskId), handleTaskUpdate);
-        unsubscribe(`task_logs`, Number(taskId), handleLogsUpdate);
-      };
-    }
-  }, [taskId, subscribe, unsubscribe]);
+  }
+}, [dispatch, taskId, subscribe, unsubscribe]);
   
   // Обновляем локальные логи, когда изменяются логи в selectedTask
   useEffect(() => {
@@ -618,6 +616,11 @@ const TaskDetailPage: React.FC = () => {
               </List>
             </Card>
             
+            <TaskRecommendations 
+              taskId={selectedTask.id} 
+              projectId={selectedTask.projectId}
+            />
+
             <Grid container spacing={2}>
               <Grid item xs={6}>
                 <Paper 

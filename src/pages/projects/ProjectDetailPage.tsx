@@ -95,6 +95,7 @@ const ProjectDetailPage: React.FC = () => {
   // Загружаем данные о проекте при монтировании
   useEffect(() => {
     if (projectId) {
+      // Загружаем данные о проекте
       dispatch(fetchProjectById(Number(projectId)));
       
       // Загружаем задачи проекта
@@ -105,12 +106,12 @@ const ProjectDetailPage: React.FC = () => {
         sortOrder: 'desc'
       };
       dispatch(fetchTasks(taskParams));
+      
+      // Очищаем выбранный проект при размонтировании
+      return () => {
+        dispatch(clearSelectedProject());
+      };
     }
-    
-    // Очищаем выбранный проект при размонтировании
-    return () => {
-      dispatch(clearSelectedProject());
-    };
   }, [dispatch, projectId]);
   
   // Обработчик обновления данных

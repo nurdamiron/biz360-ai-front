@@ -32,6 +32,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { login, clearError } from '../../store/slices/authSlice';
 import { Environment, getCurrentEnvironment, setEnvironment } from '../../config/api.config';
 import { ColorModeContext } from '../../App';
+import { useSnackbar } from 'notistack';
 
 // Иконки
 import Visibility from '@mui/icons-material/Visibility';
@@ -58,6 +59,8 @@ const LoginPage: React.FC = () => {
   const colorMode = React.useContext(ColorModeContext);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
+  const { enqueueSnackbar } = useSnackbar();
+
   // Перенаправление, если пользователь уже вошел
   useEffect(() => {
     if (isLoggedIn) {
@@ -92,21 +95,20 @@ const LoginPage: React.FC = () => {
   
   // Обработчик входа
   // Пример входа в систему
-const handleLogin = async () => {
+  const handleLogin = async () => {
+    if (!validateForm()) return;
+    
     try {
       const result = await dispatch(login({ 
         username, 
         password 
       })).unwrap();
       
-      // Сохранение токена и данных пользователя
-      localStorage.setItem('auth_token', result.token);
-      
-      // Переход на приборную панель
+      // Переход на приборную панель после успешного входа
       navigate('/dashboard');
     } catch (error) {
-      // Обработка ошибок входа
-      enqueueSnackbar('Ошибка входа', { variant: 'error' });
+      // Ошибки уже обрабатываются в slice, но можно добавить дополнительное уведомление
+      enqueueSnackbar('Ошибка входа в систему', { variant: 'error' });
     }
   };
   

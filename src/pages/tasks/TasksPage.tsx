@@ -114,6 +114,7 @@ const TasksPage: React.FC = () => {
       queryParams.priority = priorityFilter;
     }
     
+    // Вызываем асинхронное действие для загрузки задач
     dispatch(fetchTasks(queryParams));
   }, [dispatch, filters, searchTerm, statusFilter, priorityFilter]);
   

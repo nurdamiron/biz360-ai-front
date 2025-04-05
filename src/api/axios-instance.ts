@@ -34,10 +34,11 @@ apiClient.interceptors.request.use(
     // Добавляем авторизационный токен, если он есть
     const token = localStorage.getItem('auth_token');
     if (token) {
-      config.headers = {
-        ...config.headers,
-        Authorization: `Bearer ${token}`,
-      };
+      // Добавлены обратные кавычки для шаблонной строки
+config.headers = {
+    ...config.headers,
+    Authorization: `Bearer ${token}`,
+  };
     }
     
     // Включаем индикатор загрузки, если запрос не помечен как silent

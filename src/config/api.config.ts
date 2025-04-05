@@ -1,45 +1,45 @@
-// src/config/api.config.ts
 export enum Environment {
     LOCAL = 'local',
-    PRODUCTION = 'production'
+    PRODUCTION = 'production',
   }
   
-  export const API_CONFIG = {
-    baseUrl: {
-      [Environment.LOCAL]: 'http://localhost:3000/api',
-      [Environment.PRODUCTION]: 'https://ai-assistant-back-zneh.onrender.com/api'
-    },
-    wsUrl: {
-      [Environment.LOCAL]: 'ws://localhost:3000',
-      [Environment.PRODUCTION]: 'wss://ai-assistant-back-zneh.onrender.com'
-    }
-  }
+  // Хранение текущего окружения
+  let currentEnvironment: Environment = Environment.LOCAL;
   
-  // Получение текущего окружения из localStorage или по умолчанию
+  // Получить текущее окружение
   export const getCurrentEnvironment = (): Environment => {
-    const savedEnv = localStorage.getItem('app_environment');
-    
+    // Пробуем загрузить сохраненное окружение из localStorage
+    const savedEnv = localStorage.getItem('api_environment');
     if (savedEnv && Object.values(Environment).includes(savedEnv as Environment)) {
-      return savedEnv as Environment;
+      currentEnvironment = savedEnv as Environment;
     }
-    
-    // По умолчанию определяем по домену
-    return window.location.hostname === 'localhost' 
-      ? Environment.LOCAL 
-      : Environment.PRODUCTION;
-  }
+    return currentEnvironment;
+  };
   
-  // Установка окружения
+  // Установить окружение
   export const setEnvironment = (env: Environment): void => {
-    localStorage.setItem('app_environment', env);
-  }
+    currentEnvironment = env;
+    localStorage.setItem('api_environment', env);
+  };
   
-  // Получение базового URL API
+  // Конфигурация для каждого окружения
+  const apiConfig = {
+    [Environment.LOCAL]: {
+      baseUrl: 'http://localhost:3000/api',
+      wsUrl: 'ws://localhost:3000/ws',
+    },
+    [Environment.PRODUCTION]: {
+      baseUrl: 'https://ai-assistant-back-zneh.onrender.com/api',
+      wsUrl: 'wss://ai-assistant-back-zneh.onrender.com/ws',
+    },
+  };
+  
+  // Получение базового URL для API
   export const getApiBaseUrl = (): string => {
-    return API_CONFIG.baseUrl[getCurrentEnvironment()];
-  }
+    return apiConfig[getCurrentEnvironment()].baseUrl;
+  };
   
-  // Получение URL WebSocket
+  // Получение URL для WebSocket
   export const getWsUrl = (): string => {
-    return API_CONFIG.wsUrl[getCurrentEnvironment()];
-  }
+    return apiConfig[getCurrentEnvironment()].wsUrl;
+  };

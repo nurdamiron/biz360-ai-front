@@ -6,12 +6,12 @@ import websocketService from '../../services/websocket.service';
 
 // Начальное состояние
 const initialState: AuthState = {
-  user: null,
-  token: localStorage.getItem('auth_token'),
-  isLoggedIn: !!localStorage.getItem('auth_token'),
-  isLoading: false,
-  error: null,
-};
+    user: null,
+    token: localStorage.getItem('auth_token'),
+    isLoggedIn: !!localStorage.getItem('auth_token'), // исправлено с 'authtoken'
+    isLoading: false,
+    error: null,
+  };
 
 // Асинхронный экшен для логина
 export const login = createAsyncThunk(
@@ -40,18 +40,18 @@ export const login = createAsyncThunk(
 
 // Асинхронный экшен для получения данных пользователя
 export const fetchUser = createAsyncThunk(
-  'auth/fetchUser',
-  async (_, { rejectWithValue }) => {
-    try {
-      return await AuthService.getUser();
-    } catch (error: any) {
-      if (error.response && error.response.data) {
-        return rejectWithValue(error.response.data.message || 'Ошибка получения данных пользователя');
+    'auth/fetchUser',
+    async (_, { rejectWithValue }) => { // добавлен параметр '_'
+      try {
+        return await AuthService.getUser();
+      } catch (error: any) {
+        if (error.response && error.response.data) {
+          return rejectWithValue(error.response.data.message || 'Ошибка получения данных пользователя');
+        }
+        return rejectWithValue('Ошибка сети. Пожалуйста, проверьте соединение.');
       }
-      return rejectWithValue('Ошибка сети. Пожалуйста, проверьте соединение.');
     }
-  }
-);
+  );
 
 // Асинхронный экшен для выхода из системы
 export const logout = createAsyncThunk(

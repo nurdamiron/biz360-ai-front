@@ -6,6 +6,45 @@ import App from './App';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import { registerSW } from 'virtual:pwa-register';
 
+// Импорт стилей PWA
+import './styles/pwa.css';
+
+// Функция для настройки высоты для мобильных устройств
+const setupMobileViewport = () => {
+  // Установка правильной высоты на мобильных устройствах
+  const setAppHeight = () => {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+    document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+  };
+  
+  // Вызов функции при загрузке и изменении размера окна
+  setAppHeight();
+  window.addEventListener('resize', setAppHeight);
+  window.addEventListener('orientationchange', setAppHeight);
+};
+
+// Настройка мета-тегов для PWA
+const setupPWAMetaTags = () => {
+  const metaTags = [
+    { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },
+    { name: 'apple-mobile-web-app-capable', content: 'yes' },
+    { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+    { name: 'theme-color', content: '#0085FF' },
+    { name: 'format-detection', content: 'telephone=no' }
+  ];
+
+  metaTags.forEach(tag => {
+    let metaTag = document.querySelector(`meta[name="${tag.name}"]`);
+    if (!metaTag) {
+      metaTag = document.createElement('meta');
+      metaTag.setAttribute('name', tag.name);
+      document.head.appendChild(metaTag);
+    }
+    metaTag.setAttribute('content', tag.content);
+  });
+};
+
 // Регистрируем сервис-воркер для PWA
 if ('serviceWorker' in navigator) {
   // Используем Vite-плагин PWA для регистрации
@@ -27,70 +66,28 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Стили для полноэкранного режима на мобильных устройствах
-const addFullscreenStyles = () => {
-  const style = document.createElement('style');
-  style.textContent = `
-    :root {
-      --vh: 1vh;
-    }
-    
-    html, body {
-      position: fixed;
-      width: 100%;
-      height: 100vh;
-      height: calc(var(--vh, 1vh) * 100);
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      overscroll-behavior: none;
-      -webkit-tap-highlight-color: transparent;
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
-      touch-action: manipulation;
-    }
-    
-    #root {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    
-    /* Исправляет проблемы с высотой на мобильных устройствах */
-    @supports (-webkit-touch-callout: none) {
-      body {
-        height: -webkit-fill-available;
-      }
-      #root {
-        height: -webkit-fill-available;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-  
-  // Установка правильной высоты на мобильных устройствах
-  const setAppHeight = () => {
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
-  };
-  
-  // Вызов функции при загрузке и изменении размера окна
-  setAppHeight();
-  window.addEventListener('resize', setAppHeight);
-  window.addEventListener('orientationchange', setAppHeight);
+// Определяем, запущено ли приложение в режиме PWA
+const isPWA = () => {
+  return window.matchMedia('(display-mode: standalone)').matches || 
+         window.navigator.standalone || 
+         document.referrer.includes('android-app://');
 };
 
-// Добавляем стили для мобильных устройств
-if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-  addFullscreenStyles();
+// Применяем специальные настройки для мобильных устройств
+if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isPWA()) {
+  setupMobileViewport();
+  setupPWAMetaTags();
   
   // Для iOS устраняем задержку касания
-  document.addEventListener('touchstart', function() {}, {passive: true});
+  document.addEventListener('touchstart', function(){}, {passive: true});
+  
+  // Предотвращаем двойной тап для масштабирования
+  document.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+  }, { passive: false });
+  
+  // Предотвращаем перетаскивание (pull-to-refresh) на iOS
+  document.body.style.overscrollBehavior = 'none';
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

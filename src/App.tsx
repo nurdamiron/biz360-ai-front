@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useLayoutEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, PaletteMode, CssBaseline } from '@mui/material';
 import { ruRU } from '@mui/material/locale';
@@ -28,6 +28,8 @@ export const ColorModeContext = React.createContext({
   toggleColorMode: () => {},
   mode: 'light' as PaletteMode,
 });
+
+
 
 function App() {
   const dispatch = useAppDispatch();
@@ -118,6 +120,68 @@ function App() {
     document.head.appendChild(styleElement);
   }, [theme]);
   
+
+  // В функции App добавьте следующий useEffect для настройки PWA
+useEffect(() => {
+  // Определяем, является ли устройство мобильным
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  // Определяем, запущено ли приложение в режиме PWA
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                (window.navigator as any).standalone === true;
+  
+  if (isMobile) {
+    // Настройки для мобильных устройств
+    document.body.classList.add('mobile-device');
+    
+    if (isPWA) {
+      document.body.classList.add('pwa-mode');
+      
+      // Дополнительные настройки для PWA режима
+      document.addEventListener('gesturestart', (e) => {
+        e.preventDefault(); // Предотвращает масштабирование жестами на iOS
+      });
+    }
+    
+    // Установка правильной высоты viewport для мобильных устройств
+    const setAppHeight = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    
+    setAppHeight();
+    window.addEventListener('resize', setAppHeight);
+    window.addEventListener('orientationchange', () => {
+      // Небольшая задержка для iOS
+      setTimeout(setAppHeight, 100);
+    });
+    
+    return () => {
+      window.removeEventListener('resize', setAppHeight);
+      window.removeEventListener('orientationchange', setAppHeight);
+    };
+  }
+}, []);
+
+// Добавьте этот хук useLayoutEffect перед рендерингом, чтобы предотвратить мерцание при загрузке
+useLayoutEffect(() => {
+  // Устанавливаем режим отображения сразу при монтировании
+  const setInitialDisplayMode = () => {
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                (window.navigator as any).standalone === true;
+    
+    if (isPWA) {
+      document.body.classList.add('pwa-mode');
+      
+      // Скрываем адресную строку браузера в iOS
+      if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        window.scrollTo(0, 0);
+      }
+    }
+  };
+  
+  setInitialDisplayMode();
+}, []);
   // Настраиваем референс для SnackbarProvider
   const notistackRef = React.createRef<SnackbarProvider>();
   

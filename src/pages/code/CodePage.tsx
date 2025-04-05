@@ -2,68 +2,67 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box,
-  Heading,
-  Text,
-  Flex,
-  VStack,
-  HStack,
-  Grid,
-  GridItem,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  Select,
+  Typography,
   Button,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Badge,
-  useColorModeValue,
-  Spinner,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  IconButton,
+  Grid,
   Card,
-  CardBody,
-  useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
-  useToast,
+  CardContent,
+  CardHeader,
+  TextField,
+  InputAdornment,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Divider,
   List,
   ListItem,
-  Divider
-} from '@chakra-ui/react';
+  ListItemIcon,
+  ListItemText,
+  ListItemSecondaryAction,
+  Chip,
+  Badge,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Paper,
+  Stack,
+  Tab,
+  Tabs,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress,
+  useTheme,
+  alpha,
+  useMediaQuery,
+  Menu,
+  SelectChangeEvent
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchTasks } from '../../store/slices/tasksSlice';
 import { fetchProjects } from '../../store/slices/projectsSlice';
 import CodeEditorPanel from '../../components/code/CodeEditorPanel';
+import { useSnackbar } from 'notistack';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const SearchIcon = () => <span>🔍</span>;
-const FilterIcon = () => <span>🔎</span>;
-const RefreshIcon = () => <span>🔄</span>;
-const ViewIcon = () => <span>👁️</span>;
-const CheckIcon = () => <span>✅</span>;
-const XIcon = () => <span>❌</span>;
-const FolderIcon = () => <span>📁</span>;
-const FileIcon = () => <span>📄</span>;
+// Иконки
+import SearchIcon from '@mui/icons-material/Search';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import FolderIcon from '@mui/icons-material/Folder';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import CodeIcon from '@mui/icons-material/Code';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 // Интерфейсы для типизации
 interface CodeGeneration {
@@ -91,11 +90,39 @@ interface CodeFile {
   children?: CodeFile[];
 }
 
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`code-tabpanel-${index}`}
+      aria-labelledby={`code-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 2 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
 const CodePage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const toast = useToast();
-  
+  const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   // Состояния и модальные окна
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProject, setSelectedProject] = useState<string>('');
@@ -103,16 +130,12 @@ const CodePage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<CodeFile | null>(null);
   const [activeGeneration, setActiveGeneration] = useState<CodeGeneration | null>(null);
   
-  const { isOpen: isFileViewOpen, onOpen: onFileViewOpen, onClose: onFileViewClose } = useDisclosure();
-  const { isOpen: isGenerationViewOpen, onOpen: onGenerationViewOpen, onClose: onGenerationViewClose } = useDisclosure();
+  const [isFileViewOpen, setIsFileViewOpen] = useState(false);
+  const [isGenerationViewOpen, setIsGenerationViewOpen] = useState(false);
   
   // Получаем данные из Redux
   const { tasks, isLoading: isTasksLoading } = useAppSelector(state => state.tasks);
   const { projects, isLoading: isProjectsLoading } = useAppSelector(state => state.projects);
-  
-  // Цвета
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const hoverBgColor = useColorModeValue('gray.50', 'gray.700');
   
   // Загружаем данные при монтировании
   useEffect(() => {
@@ -249,23 +272,23 @@ const CodePage: React.FC = () => {
   // Функция для рендеринга файловой структуры
   const renderFileTree = (files: CodeFile[], depth = 0) => {
     return files.map(file => (
-      <Box key={file.id}>
-        <Box
-          pl={depth * 4}
-          py={2}
-          px={3}
-          borderRadius="md"
-          cursor="pointer"
-          _hover={{ bg: hoverBgColor }}
+      <React.Fragment key={file.id}>
+        <ListItem 
+          button
           onClick={() => handleFileClick(file)}
-          display="flex"
-          alignItems="center"
+          sx={{ 
+            pl: depth * 2 + 2,
+            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) },
+            borderRadius: 1
+          }}
         >
-          {file.isDirectory ? <FolderIcon /> : <FileIcon />}
-          <Text ml={2}>{file.name}{file.extension ? `.${file.extension}` : ''}</Text>
-        </Box>
+          <ListItemIcon>
+            {file.isDirectory ? <FolderIcon color="primary" /> : <InsertDriveFileIcon color="info" />}
+          </ListItemIcon>
+          <ListItemText primary={file.name + (file.extension ? `.${file.extension}` : '')} />
+        </ListItem>
         {file.isDirectory && file.children && renderFileTree(file.children, depth + 1)}
-      </Box>
+      </React.Fragment>
     ));
   };
   
@@ -273,23 +296,23 @@ const CodePage: React.FC = () => {
   const handleFileClick = (file: CodeFile) => {
     if (!file.isDirectory) {
       setSelectedFile(file);
-      onFileViewOpen();
+      setIsFileViewOpen(true);
     }
   };
   
   // Обработчик клика по сгенерированному коду
   const handleGenerationClick = (generation: CodeGeneration) => {
     setActiveGeneration(generation);
-    onGenerationViewOpen();
+    setIsGenerationViewOpen(true);
   };
   
   // Обработчик изменения проекта
-  const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleProjectChange = (e: SelectChangeEvent) => {
     setSelectedProject(e.target.value);
   };
   
   // Обработчик изменения статуса
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleStatusChange = (e: SelectChangeEvent) => {
     setSelectedStatus(e.target.value);
   };
   
@@ -310,303 +333,326 @@ const CodePage: React.FC = () => {
   
   return (
     <Box>
-      <Flex justifyContent="space-between" alignItems="center" mb={6}>
-        <VStack align="flex-start" spacing={1}>
-          <Heading size="lg">Управление кодом</Heading>
-          <Text color="gray.500">
-            Просмотр, анализ и утверждение сгенерированного кода
-          </Text>
-        </VStack>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Управление кодом
+        </Typography>
         
-        <HStack spacing={2}>
-          <Button 
-            leftIcon={<RefreshIcon />} 
-            variant="outline" 
-            onClick={() => {
-              dispatch(fetchTasks());
-              dispatch(fetchProjects());
-            }}
-            isLoading={isTasksLoading || isProjectsLoading}
-          >
-            Обновить
-          </Button>
-        </HStack>
-      </Flex>
+        <Button 
+          startIcon={<RefreshIcon />} 
+          variant="outlined" 
+          onClick={() => {
+            dispatch(fetchTasks());
+            dispatch(fetchProjects());
+          }}
+          disabled={isTasksLoading || isProjectsLoading}
+        >
+          Обновить
+        </Button>
+      </Box>
       
-      <Card borderColor={borderColor} boxShadow="sm" mb={6}>
-        <CardBody>
-          <Flex 
-            direction={{ base: 'column', md: 'row' }} 
-            justify="space-between" 
-            align={{ base: 'stretch', md: 'center' }}
-            gap={4}
-          >
-            <InputGroup maxW={{ base: '100%', md: '400px' }}>
-              <InputLeftElement pointerEvents="none">
-                <SearchIcon />
-              </InputLeftElement>
-              <Input 
-                placeholder="Поиск кода..." 
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={4}>
+              <TextField 
+                fullWidth
+                placeholder="Поиск кода..."
                 value={searchTerm}
                 onChange={handleSearchChange}
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
               />
-            </InputGroup>
+            </Grid>
             
-            <HStack spacing={2}>
-              <Select 
-                placeholder="Все проекты" 
-                value={selectedProject}
-                onChange={handleProjectChange}
-                width="auto"
-              >
-                {projects.map(project => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </Select>
-              
-              <Select 
-                placeholder="Все статусы" 
-                value={selectedStatus}
-                onChange={handleStatusChange}
-                width="auto"
-              >
-                <option value="pending">Ожидает проверки</option>
-                <option value="approved">Утверждено</option>
-                <option value="rejected">Отклонено</option>
-              </Select>
-              
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="project-select-label">Проект</InputLabel>
+                <Select
+                  labelId="project-select-label"
+                  value={selectedProject}
+                  label="Проект"
+                  onChange={handleProjectChange}
+                >
+                  <MenuItem value="">Все проекты</MenuItem>
+                  {projects.map(project => (
+                    <MenuItem key={project.id} value={project.id.toString()}>
+                      {project.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="status-select-label">Статус</InputLabel>
+                <Select
+                  labelId="status-select-label"
+                  value={selectedStatus}
+                  label="Статус"
+                  onChange={handleStatusChange}
+                >
+                  <MenuItem value="">Все статусы</MenuItem>
+                  <MenuItem value="pending">Ожидает проверки</MenuItem>
+                  <MenuItem value="approved">Утверждено</MenuItem>
+                  <MenuItem value="rejected">Отклонено</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={2}>
               <Button 
-                size="sm" 
-                variant="ghost" 
+                variant="outlined"
+                fullWidth
                 onClick={handleResetFilters}
               >
                 Сбросить
               </Button>
-            </HStack>
-          </Flex>
-        </CardBody>
+            </Grid>
+          </Grid>
+        </CardContent>
       </Card>
       
-      <Grid templateColumns={{ base: '1fr', lg: '300px 1fr' }} gap={6}>
-        <GridItem>
-          <Card borderColor={borderColor} boxShadow="sm" h="100%">
-            <CardBody p={0}>
-              <Heading size="md" p={4} borderBottomWidth="1px" borderBottomColor={borderColor}>
-                Файловая структура
-              </Heading>
-              <Box maxH="600px" overflowY="auto" p={2}>
+      <Grid container spacing={3}>
+        <Grid item xs={12} lg={4}>
+          <Card variant="outlined" sx={{ height: '100%' }}>
+            <CardHeader 
+              title="Файловая структура" 
+              titleTypographyProps={{ variant: 'h6' }}
+            />
+            <Divider />
+            <Box sx={{ maxHeight: 'calc(100vh - 250px)', overflow: 'auto' }}>
+              <List component="div">
                 {renderFileTree(fileStructure)}
-              </Box>
-            </CardBody>
+              </List>
+            </Box>
           </Card>
-        </GridItem>
+        </Grid>
         
-        <GridItem>
-          <Card borderColor={borderColor} boxShadow="sm">
-            <CardBody p={0}>
-              <Heading size="md" p={4} borderBottomWidth="1px" borderBottomColor={borderColor}>
-                Сгенерированный код
-              </Heading>
-              
-              {isTasksLoading ? (
-                <Flex justify="center" align="center" p={10}>
-                  <Spinner size="xl" />
-                </Flex>
-              ) : filteredGenerations.length > 0 ? (
-                <Box maxH="600px" overflowY="auto">
-                  <Table variant="simple">
-                    <Thead position="sticky" top={0} bg={useColorModeValue('white', 'gray.800')} zIndex={1}>
-                      <Tr>
-                        <Th>Путь к файлу</Th>
-                        <Th>Задача</Th>
-                        <Th>Статус</Th>
-                        <Th>Дата</Th>
-                        <Th>Действия</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {filteredGenerations.map(generation => {
-                        const task = tasks.find(t => t.id === generation.taskId);
-                        return (
-                          <Tr 
-                            key={generation.id} 
-                            _hover={{ bg: hoverBgColor }}
-                            cursor="pointer"
-                            onClick={() => handleGenerationClick(generation)}
-                          >
-                            <Td>
-                              <HStack>
-                                <FileIcon />
-                                <Text>{generation.filePath}</Text>
-                              </HStack>
-                            </Td>
-                            <Td>
-                              {task ? (
-                                <VStack align="start" spacing={0}>
-                                  <Text>{task.title}</Text>
-                                  <Text fontSize="xs" color="gray.500">#{task.id}</Text>
-                                </VStack>
-                              ) : (
-                                <Text>Задача не найдена</Text>
-                              )}
-                            </Td>
-                            <Td>
-                              <Badge 
-                                colorScheme={
-                                  generation.status === 'approved' ? 'green' : 
-                                  generation.status === 'rejected' ? 'red' : 
-                                  'blue'
-                                }
-                              >
-                                {
-                                  generation.status === 'approved' ? 'Утверждено' : 
-                                  generation.status === 'rejected' ? 'Отклонено' : 
-                                  'Ожидает проверки'
-                                }
-                              </Badge>
-                            </Td>
-                            <Td>{new Date(generation.createdAt).toLocaleDateString()}</Td>
-                            <Td>
-                              <IconButton
-                                aria-label="View code"
-                                icon={<ViewIcon />}
-                                size="sm"
-                                variant="ghost"
+        <Grid item xs={12} lg={8}>
+          <Card variant="outlined">
+            <CardHeader 
+              title="Сгенерированный код" 
+              titleTypographyProps={{ variant: 'h6' }}
+            />
+            <Divider />
+            
+            {isTasksLoading ? (
+              <Box display="flex" justifyContent="center" alignItems="center" p={4}>
+                <CircularProgress />
+              </Box>
+            ) : filteredGenerations.length > 0 ? (
+              <TableContainer sx={{ maxHeight: 'calc(100vh - 250px)', overflow: 'auto' }}>
+                <Table stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Путь к файлу</TableCell>
+                      <TableCell>Задача</TableCell>
+                      <TableCell>Статус</TableCell>
+                      <TableCell>Дата</TableCell>
+                      <TableCell align="center">Действия</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredGenerations.map(generation => {
+                      const task = tasks.find(t => t.id === generation.taskId);
+                      return (
+                        <TableRow 
+                          key={generation.id} 
+                          hover
+                          onClick={() => handleGenerationClick(generation)}
+                          sx={{ cursor: 'pointer' }}
+                        >
+                          <TableCell>
+                            <Box display="flex" alignItems="center">
+                              <InsertDriveFileIcon sx={{ mr: 1 }} fontSize="small" color="info" />
+                              <Typography variant="body2">{generation.filePath}</Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            {task ? (
+                              <Box>
+                                <Typography variant="body2">{task.title}</Typography>
+                                <Typography variant="caption" color="text.secondary">#{task.id}</Typography>
+                              </Box>
+                            ) : (
+                              <Typography variant="body2">Задача не найдена</Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={
+                                generation.status === 'approved' ? 'Утверждено' : 
+                                generation.status === 'rejected' ? 'Отклонено' : 
+                                'Ожидает проверки'
+                              }
+                              color={
+                                generation.status === 'approved' ? 'success' : 
+                                generation.status === 'rejected' ? 'error' : 
+                                'info'
+                              }
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>{new Date(generation.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Просмотреть код">
+                              <IconButton 
+                                size="small"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleGenerationClick(generation);
                                 }}
-                              />
-                            </Td>
-                          </Tr>
-                        );
-                      })}
-                    </Tbody>
-                  </Table>
-                </Box>
-              ) : (
-                <Box p={10} textAlign="center">
-                  <Text fontSize="lg" color="gray.500">
-                    Сгенерированный код не найден
-                  </Text>
-                  <Text color="gray.500" mt={2}>
-                    Попробуйте изменить параметры фильтрации или создать новые задачи
-                  </Text>
-                </Box>
-              )}
-            </CardBody>
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Box p={4} textAlign="center">
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  Сгенерированный код не найден
+                </Typography>
+                <Typography color="text.secondary">
+                  Попробуйте изменить параметры фильтрации или создать новые задачи
+                </Typography>
+              </Box>
+            )}
           </Card>
-        </GridItem>
+        </Grid>
       </Grid>
       
       {/* Модальное окно просмотра файла */}
-      <Modal isOpen={isFileViewOpen} onClose={onFileViewClose} size="xl" scrollBehavior="inside">
-        <ModalOverlay />
-        <ModalContent maxW="90vw" h="80vh">
-          <ModalHeader>
-            {selectedFile && (
-              <HStack>
-                <FileIcon />
-                <Text>{selectedFile.path}</Text>
-              </HStack>
-            )}
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            {selectedFile && (
-              <Box
-                fontFamily="mono"
-                fontSize="sm"
-                whiteSpace="pre-wrap"
-                p={4}
-                bg={useColorModeValue('gray.50', 'gray.800')}
-                borderRadius="md"
-                overflowX="auto"
-                h="100%"
-              >
-                {selectedFile.content}
-              </Box>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Text fontSize="sm" color="gray.500" mr="auto">
-              {selectedFile && `Последнее изменение: ${new Date(selectedFile.lastModified).toLocaleString()}`}
-            </Text>
-            <Button variant="ghost" mr={3} onClick={onFileViewClose}>
-              Закрыть
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <Dialog
+        open={isFileViewOpen}
+        onClose={() => setIsFileViewOpen(false)}
+        fullWidth
+        maxWidth="lg"
+        scroll="paper"
+      >
+        <DialogTitle>
+          {selectedFile && (
+            <Box display="flex" alignItems="center">
+              <InsertDriveFileIcon sx={{ mr: 1 }} color="info" />
+              <Typography>{selectedFile.path}</Typography>
+            </Box>
+          )}
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedFile && (
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                fontFamily: 'monospace',
+                fontSize: 14,
+                whiteSpace: 'pre-wrap',
+                overflowX: 'auto',
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.03)'
+              }}
+            >
+              {selectedFile.content}
+            </Paper>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Typography variant="body2" color="text.secondary" sx={{ mr: 'auto', ml: 2 }}>
+            {selectedFile && `Последнее изменение: ${new Date(selectedFile.lastModified).toLocaleString()}`}
+          </Typography>
+          <Button onClick={() => setIsFileViewOpen(false)}>
+            Закрыть
+          </Button>
+        </DialogActions>
+      </Dialog>
       
       {/* Модальное окно просмотра сгенерированного кода */}
-      <Modal isOpen={isGenerationViewOpen} onClose={onGenerationViewClose} size="xl" scrollBehavior="inside">
-        <ModalOverlay />
-        <ModalContent maxW="90vw" h="80vh">
-          <ModalHeader>
-            {activeGeneration && (
-              <VStack align="start" spacing={0}>
-                <HStack>
-                  <FileIcon />
-                  <Text>{activeGeneration.filePath}</Text>
-                </HStack>
-                <HStack mt={1}>
-                  <Badge 
-                    colorScheme={
-                      activeGeneration.status === 'approved' ? 'green' : 
-                      activeGeneration.status === 'rejected' ? 'red' : 
-                      'blue'
-                    }
-                  >
-                    {
-                      activeGeneration.status === 'approved' ? 'Утверждено' : 
-                      activeGeneration.status === 'rejected' ? 'Отклонено' : 
-                      'Ожидает проверки'
-                    }
-                  </Badge>
-                  <Text fontSize="sm" color="gray.500">
-                    Создано: {new Date(activeGeneration.createdAt).toLocaleString()}
-                  </Text>
-                </HStack>
-              </VStack>
-            )}
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            {activeGeneration && (
-              <CodeEditorPanel
-                codeGeneration={activeGeneration}
-                onRegenerate={() => {
-                  toast({
-                    title: 'Запрос на регенерацию отправлен',
-                    description: 'ИИ-ассистент создаст новую версию кода',
-                    status: 'info',
-                    duration: 3000,
-                    isClosable: true,
-                  });
-                }}
-              />
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onGenerationViewClose}>
-              Закрыть
-            </Button>
-            {activeGeneration && activeGeneration.status === 'pending' && (
-              <>
-                <Button colorScheme="green" leftIcon={<CheckIcon />} mr={3}>
-                  Утвердить
-                </Button>
-                <Button colorScheme="red" leftIcon={<XIcon />}>
-                  Отклонить
-                </Button>
-              </>
-            )}
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <Dialog
+        open={isGenerationViewOpen}
+        onClose={() => setIsGenerationViewOpen(false)}
+        fullWidth
+        maxWidth="lg"
+        scroll="paper"
+      >
+        <DialogTitle>
+          {activeGeneration && (
+            <Box>
+              <Box display="flex" alignItems="center">
+                <InsertDriveFileIcon sx={{ mr: 1 }} color="info" />
+                <Typography>{activeGeneration.filePath}</Typography>
+              </Box>
+              <Box display="flex" alignItems="center" mt={1}>
+                <Chip 
+                  label={
+                    activeGeneration.status === 'approved' ? 'Утверждено' : 
+                    activeGeneration.status === 'rejected' ? 'Отклонено' : 
+                    'Ожидает проверки'
+                  }
+                  color={
+                    activeGeneration.status === 'approved' ? 'success' : 
+                    activeGeneration.status === 'rejected' ? 'error' : 
+                    'info'
+                  }
+                  size="small"
+                  sx={{ mr: 1 }}
+                />
+                <Typography variant="body2" color="text.secondary">
+                  Создано: {new Date(activeGeneration.createdAt).toLocaleString()}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </DialogTitle>
+        <DialogContent dividers>
+          {activeGeneration && (
+            <CodeEditorPanel
+              codeGeneration={activeGeneration}
+              onRegenerate={() => {
+                enqueueSnackbar('Запрос на регенерацию отправлен', {
+                  variant: 'info',
+                  autoHideDuration: 3000,
+                });
+              }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsGenerationViewOpen(false)}>
+            Закрыть
+          </Button>
+          {activeGeneration && activeGeneration.status === 'pending' && (
+            <>
+              <Button 
+                color="success" 
+                startIcon={<CheckCircleIcon />}
+                variant="contained"
+              >
+                Утвердить
+              </Button>
+              <Button 
+                color="error" 
+                startIcon={<CancelIcon />}
+                variant="contained"
+              >
+                Отклонить
+              </Button>
+            </>
+          )}
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

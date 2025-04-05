@@ -3,39 +3,47 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
-  Heading,
-  Text,
-  VStack,
-  HStack,
-  Badge,
+  Typography,
   Button,
-  Flex,
   Grid,
-  GridItem,
-  Divider,
-  Spinner,
-  useColorModeValue,
   Card,
+  CardContent,
   CardHeader,
-  CardBody,
-  CardFooter,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
-  useToast,
-  SimpleGrid,
-  Progress,
-  Icon,
+  Divider,
+  Chip,
+  LinearProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Paper,
   List,
   ListItem,
-  ListIcon,
-} from '@chakra-ui/react';
+  ListItemText,
+  ListItemSecondaryAction,
+  CircularProgress,
+  Tabs,
+  Tab,
+  Stack,
+  IconButton,
+  Tooltip,
+  useTheme,
+  useMediaQuery,
+  Badge,
+  Avatar,
+  alpha
+} from '@mui/material';
+
+// Иконки
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import EditIcon from '@mui/icons-material/Edit';
+import AddIcon from '@mui/icons-material/Add';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FolderIcon from '@mui/icons-material/Folder';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import CodeIcon from '@mui/icons-material/Code';
+
+import { useSnackbar } from 'notistack';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { 
   fetchProjectById, 
@@ -45,28 +53,45 @@ import { fetchTasks } from '../../store/slices/tasksSlice';
 import { TaskFilterParams } from '../../types/api.types';
 import TaskProgressCard from '../../components/task/TaskProgressCard';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const BackIcon = () => <span>←</span>;
-const RefreshIcon = () => <span>🔄</span>;
-const EditIcon = () => <span>✏️</span>;
-const AddIcon = () => <span>➕</span>;
-const FileIcon = () => <span>📄</span>;
-const FolderIcon = () => <span>📁</span>;
-const CodeIcon = () => <span>💻</span>;
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`project-tabpanel-${index}`}
+      aria-labelledby={`project-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 2 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 const ProjectDetailPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { selectedProject, isLoading: isProjectLoading } = useAppSelector(state => state.projects);
   const { tasks, isLoading: isTasksLoading } = useAppSelector(state => state.tasks);
-  const toast = useToast();
+  const { enqueueSnackbar } = useSnackbar();
   
-  // Цвета
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  
+  // Состояние для активной вкладки
+  const [tabValue, setTabValue] = useState(0);
+
   // Загружаем данные о проекте при монтировании
   useEffect(() => {
     if (projectId) {
@@ -110,26 +135,28 @@ const ProjectDetailPage: React.FC = () => {
   
   // Обработчик редактирования проекта (заглушка)
   const handleEditProject = () => {
-    toast({
-      title: 'Редактирование проекта',
-      description: 'Функция редактирования проекта будет доступна в следующей версии',
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
+    enqueueSnackbar('Функция редактирования проекта будет доступна в следующей версии', {
+      variant: 'info',
+      autoHideDuration: 3000,
     });
+  };
+  
+  // Обработчик переключения вкладок
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
   };
   
   // Получение цвета статуса
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'green';
+        return 'success';
       case 'inactive':
-        return 'orange';
+        return 'warning';
       case 'archived':
-        return 'gray';
+        return 'default';
       default:
-        return 'blue';
+        return 'primary';
     }
   };
   
@@ -149,17 +176,24 @@ const ProjectDetailPage: React.FC = () => {
   
   if (isProjectLoading) {
     return (
-      <Flex justify="center" align="center" p={10}>
-        <Spinner size="xl" />
-      </Flex>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+        <CircularProgress />
+      </Box>
     );
   }
   
   if (!selectedProject) {
     return (
-      <Box textAlign="center" p={10}>
-        <Heading size="md" mb={4}>Проект не найден</Heading>
-        <Button leftIcon={<BackIcon />} onClick={() => navigate('/projects')}>
+      <Box textAlign="center" py={5}>
+        <Typography variant="h6" gutterBottom>
+          Проект не найден
+        </Typography>
+        <Button 
+          variant="outlined" 
+          startIcon={<ArrowBackIcon />} 
+          onClick={() => navigate('/projects')}
+          sx={{ mt: 2 }}
+        >
           Вернуться к списку проектов
         </Button>
       </Box>
@@ -174,443 +208,551 @@ const ProjectDetailPage: React.FC = () => {
   
   return (
     <Box>
-      <HStack justifyContent="space-between" alignItems="center" mb={6}>
-        <Button 
-          leftIcon={<BackIcon />} 
-          variant="ghost" 
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/projects')}
         >
           К списку проектов
         </Button>
         
-        <HStack>
-          <Button 
-            leftIcon={<RefreshIcon />} 
-            variant="outline" 
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
             onClick={handleRefresh}
           >
             Обновить
           </Button>
           
-          <Button 
-            leftIcon={<EditIcon />} 
-            colorScheme="blue" 
-            variant="outline"
+          <Button
+            variant="outlined"
+            startIcon={<EditIcon />}
+            color="primary"
             onClick={handleEditProject}
           >
             Редактировать
           </Button>
           
-          <Button 
-            leftIcon={<AddIcon />} 
-            colorScheme="green" 
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            color="primary"
             onClick={handleCreateTask}
           >
             Новая задача
           </Button>
-        </HStack>
-      </HStack>
+        </Stack>
+      </Box>
       
-      <Grid 
-        templateColumns={{ base: '1fr', lg: '2fr 1fr' }} 
-        gap={6}
-      >
-        <GridItem>
-          <Card borderColor={borderColor} boxShadow="sm" mb={6}>
-            <CardHeader>
-              <VStack align="flex-start" spacing={1}>
-                <Heading size="lg">{selectedProject.name}</Heading>
-                <HStack spacing={2}>
-                  <Badge colorScheme={getStatusColor(selectedProject.status)}>
-                    {getStatusText(selectedProject.status)}
-                  </Badge>
-                  <Badge colorScheme="purple" borderRadius="full" px={2}>
-                    #{selectedProject.id}
-                  </Badge>
-                </HStack>
-              </VStack>
-            </CardHeader>
-            
-            <CardBody>
-              <VStack align="stretch" spacing={4}>
-                <Text>{selectedProject.description}</Text>
-                
-                <Divider />
-                
-                <HStack justify="space-between">
-                  <Text fontWeight="medium">Выполнение задач:</Text>
-                  <Text>{completionPercentage}%</Text>
-                </HStack>
-                
-                <Progress 
+      <Grid container spacing={3}>
+        <Grid item xs={12} lg={8}>
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardHeader
+              title={
+                <Box>
+                  <Typography variant="h5" gutterBottom>
+                    {selectedProject.name}
+                  </Typography>
+                  <Stack direction="row" spacing={1}>
+                    <Chip 
+                      label={getStatusText(selectedProject.status)} 
+                      color={getStatusColor(selectedProject.status) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'} 
+                      size="small" 
+                    />
+                    <Chip 
+                      label={`#${selectedProject.id}`} 
+                      color="secondary" 
+                      size="small" 
+                      variant="outlined" 
+                    />
+                  </Stack>
+                </Box>
+              }
+            />
+            <Divider />
+            <CardContent>
+              <Typography paragraph>
+                {selectedProject.description}
+              </Typography>
+              
+              <Divider sx={{ my: 2 }} />
+              
+              <Box mb={3}>
+                <Box display="flex" justifyContent="space-between" mb={1}>
+                  <Typography variant="body2" fontWeight="medium">
+                    Прогресс выполнения:
+                  </Typography>
+                  <Typography variant="body2">
+                    {completionPercentage}%
+                  </Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
                   value={completionPercentage} 
-                  size="md" 
-                  colorScheme={completionPercentage < 30 ? 'red' : completionPercentage < 70 ? 'yellow' : 'green'} 
-                  borderRadius="full"
+                  color={
+                    completionPercentage < 30 ? 'error' : 
+                    completionPercentage < 70 ? 'warning' : 
+                    'success'
+                  } 
+                  sx={{ height: 8, borderRadius: 4 }}
                 />
-              </VStack>
-            </CardBody>
-            
-            <CardFooter>
-              <Flex width="100%" justifyContent="space-between" flexWrap="wrap">
-                <Text fontSize="sm" color="gray.500">
+              </Box>
+              
+              <Box display="flex" justifyContent="space-between" flexWrap="wrap">
+                <Typography variant="body2" color="text.secondary">
                   Создан: {new Date(selectedProject.createdAt).toLocaleString()}
-                </Text>
-                <Text fontSize="sm" color="gray.500">
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
                   Обновлен: {new Date(selectedProject.updatedAt).toLocaleString()}
-                </Text>
-              </Flex>
-            </CardFooter>
+                </Typography>
+              </Box>
+            </CardContent>
           </Card>
           
-          <Tabs variant="enclosed" colorScheme="blue" isLazy>
-            <TabList>
-              <Tab>Задачи</Tab>
-              <Tab>Структура проекта</Tab>
-              <Tab>Статистика</Tab>
-            </TabList>
+          <Box sx={{ width: '100%', mb: 4 }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs 
+                value={tabValue} 
+                onChange={handleTabChange} 
+                aria-label="project tabs"
+                variant="scrollable"
+                scrollButtons="auto"
+              >
+                <Tab label="Задачи" id="project-tab-0" aria-controls="project-tabpanel-0" />
+                <Tab label="Структура проекта" id="project-tab-1" aria-controls="project-tabpanel-1" />
+                <Tab label="Статистика" id="project-tab-2" aria-controls="project-tabpanel-2" />
+              </Tabs>
+            </Box>
             
-            <TabPanels>
-              <TabPanel p={4}>
-                {isTasksLoading ? (
-                  <Flex justify="center" p={6}>
-                    <Spinner />
-                  </Flex>
-                ) : tasks.length > 0 ? (
-                  <VStack spacing={4} align="stretch">
-                    {tasks.map(task => (
-                      <TaskProgressCard key={task.id} task={task} />
-                    ))}
-                    
-                    <Button 
-                      variant="outline" 
-                      width="100%" 
-                      onClick={() => navigate('/tasks', { state: { projectId: Number(projectId) } })}
-                    >
-                      Показать все задачи
-                    </Button>
-                  </VStack>
-                ) : (
-                  <Box textAlign="center" p={6}>
-                    <Text color="gray.500" mb={2}>В проекте еще нет задач</Text>
-                    <Button 
-                      leftIcon={<AddIcon />} 
-                      colorScheme="blue" 
-                      onClick={handleCreateTask}
-                    >
-                      Создать задачу
-                    </Button>
-                  </Box>
-                )}
-              </TabPanel>
-              
-              <TabPanel p={4}>
-                <VStack align="stretch" spacing={4}>
-                  <Heading size="sm">Файловая структура</Heading>
+            <TabPanel value={tabValue} index={0}>
+              {isTasksLoading ? (
+                <Box display="flex" justifyContent="center" p={4}>
+                  <CircularProgress />
+                </Box>
+              ) : tasks.length > 0 ? (
+                <Stack spacing={2}>
+                  {tasks.map(task => (
+                    <TaskProgressCard key={task.id} task={task} />
+                  ))}
                   
-                  <Box 
-                    p={4} 
-                    bg={cardBg} 
-                    borderWidth="1px" 
-                    borderColor={borderColor} 
-                    borderRadius="md"
+                  <Button 
+                    variant="outlined" 
+                    fullWidth 
+                    onClick={() => navigate('/tasks', { state: { projectId: Number(projectId) } })}
                   >
-                    <List spacing={2}>
-                      <ListItem>
-                        <HStack>
-                          <FolderIcon />
-                          <Text fontWeight="medium">src/</Text>
-                        </HStack>
-                        <List pl={6} spacing={1} mt={2}>
-                          <ListItem>
-                            <HStack>
-                              <FolderIcon />
-                              <Text>components/</Text>
-                            </HStack>
-                          </ListItem>
-                          <ListItem>
-                            <HStack>
-                              <FolderIcon />
-                              <Text>models/</Text>
-                            </HStack>
-                          </ListItem>
-                          <ListItem>
-                            <HStack>
-                              <FolderIcon />
-                              <Text>controllers/</Text>
-                            </HStack>
-                          </ListItem>
-                          <ListItem>
-                            <HStack>
-                              <FileIcon />
-                              <Text>app.js</Text>
-                            </HStack>
-                          </ListItem>
-                          <ListItem>
-                            <HStack>
-                              <FileIcon />
-                              <Text>config.js</Text>
-                            </HStack>
-                          </ListItem>
-                        </List>
-                      </ListItem>
-                      <ListItem mt={2}>
-                        <HStack>
-                          <FolderIcon />
-                          <Text fontWeight="medium">public/</Text>
-                        </HStack>
-                      </ListItem>
-                      <ListItem mt={2}>
-                        <HStack>
-                          <FileIcon />
-                          <Text fontWeight="medium">package.json</Text>
-                        </HStack>
-                      </ListItem>
-                    </List>
-                  </Box>
-                  
-                  <Heading size="sm" mt={2}>Активные изменения</Heading>
-                  
-                  <Box 
-                    p={4} 
-                    bg={cardBg} 
-                    borderWidth="1px" 
-                    borderColor={borderColor} 
-                    borderRadius="md"
+                    Показать все задачи
+                  </Button>
+                </Stack>
+              ) : (
+                <Box textAlign="center" p={4}>
+                  <Typography color="text.secondary" mb={2}>В проекте еще нет задач</Typography>
+                  <Button 
+                    variant="contained" 
+                    startIcon={<AddIcon />} 
+                    color="primary" 
+                    onClick={handleCreateTask}
                   >
-                    <List spacing={2}>
-                      <ListItem>
-                        <HStack>
-                          <CodeIcon />
-                          <Text>src/models/user.model.js</Text>
-                          <Badge colorScheme="green">В разработке</Badge>
-                        </HStack>
-                      </ListItem>
-                      <ListItem>
-                        <HStack>
-                          <CodeIcon />
-                          <Text>src/controllers/auth.controller.js</Text>
-                          <Badge colorScheme="yellow">Проверка</Badge>
-                        </HStack>
-                      </ListItem>
-                      <ListItem>
-                        <HStack>
-                          <CodeIcon />
-                          <Text>src/components/login.component.js</Text>
-                          <Badge colorScheme="blue">Тестирование</Badge>
-                        </HStack>
-                      </ListItem>
-                    </List>
-                  </Box>
-                </VStack>
-              </TabPanel>
-              
-              <TabPanel p={4}>
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                  {/* Пример статистики */}
-                  <Card p={4} borderColor={borderColor}>
-                    <CardHeader p={2}>
-                      <Heading size="sm">Распределение кода по языкам</Heading>
-                    </CardHeader>
-                    <CardBody p={2}>
-                      <VStack align="stretch" spacing={2}>
-                        <HStack justify="space-between">
-                          <Text fontSize="sm">JavaScript</Text>
-                          <Text fontSize="sm">68%</Text>
-                        </HStack>
-                        <Progress value={68} size="sm" colorScheme="yellow" borderRadius="full" />
-                        
-                        <HStack justify="space-between">
-                          <Text fontSize="sm">HTML</Text>
-                          <Text fontSize="sm">15%</Text>
-                        </HStack>
-                        <Progress value={15} size="sm" colorScheme="orange" borderRadius="full" />
-                        
-                        <HStack justify="space-between">
-                          <Text fontSize="sm">CSS</Text>
-                          <Text fontSize="sm">12%</Text>
-                        </HStack>
-                        <Progress value={12} size="sm" colorScheme="blue" borderRadius="full" />
-                        
-                        <HStack justify="space-between">
-                          <Text fontSize="sm">Другие</Text>
-                          <Text fontSize="sm">5%</Text>
-                        </HStack>
-                        <Progress value={5} size="sm" colorScheme="gray" borderRadius="full" />
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                  
-                  <Card p={4} borderColor={borderColor}>
-                    <CardHeader p={2}>
-                      <Heading size="sm">Активность</Heading>
-                    </CardHeader>
-                    <CardBody p={2}>
-                      <VStack align="stretch" spacing={2}>
-                        <HStack justify="space-between">
-                          <Text fontSize="sm">Коммиты за неделю</Text>
-                          <Text fontSize="sm" fontWeight="bold">23</Text>
-                        </HStack>
-                        <Divider />
-                        <HStack justify="space-between">
-                          <Text fontSize="sm">Pull Requests</Text>
-                          <Text fontSize="sm" fontWeight="bold">7</Text>
-                        </HStack>
-                        <Divider />
-                        <HStack justify="space-between">
-                          <Text fontSize="sm">Изменено файлов</Text>
-                          <Text fontSize="sm" fontWeight="bold">42</Text>
-                        </HStack>
-                        <Divider />
-                        <HStack justify="space-between">
-                          <Text fontSize="sm">Добавлено строк</Text>
-                          <Text fontSize="sm" fontWeight="bold">+1,204</Text>
-                        </HStack>
-                        <Divider />
-                        <HStack justify="space-between">
-                          <Text fontSize="sm">Удалено строк</Text>
-                          <Text fontSize="sm" fontWeight="bold">-408</Text>
-                        </HStack>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                </SimpleGrid>
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
-        </GridItem>
-        
-        <GridItem>
-          <Card borderColor={borderColor} boxShadow="sm" mb={6}>
-            <CardHeader>
-              <Heading size="md">Обзор проекта</Heading>
-            </CardHeader>
-            <CardBody>
-              <SimpleGrid columns={2} spacing={4} mb={4}>
-                <Stat>
-                  <StatLabel>Всего задач</StatLabel>
-                  <StatNumber>{selectedProject.tasksCount}</StatNumber>
-                  <StatHelpText>
-                    {completionPercentage}% завершено
-                  </StatHelpText>
-                </Stat>
+                    Создать задачу
+                  </Button>
+                </Box>
+              )}
+            </TabPanel>
+            
+            <TabPanel value={tabValue} index={1}>
+              <Stack spacing={3}>
+                <Typography variant="subtitle1" fontWeight="medium">
+                  Файловая структура
+                </Typography>
                 
-                <Stat>
-                  <StatLabel>Активные задачи</StatLabel>
-                  <StatNumber>{selectedProject.activeTasks}</StatNumber>
-                  <StatHelpText>
-                    {selectedProject.activeTasks > 0 ? 'В процессе' : 'Нет активных'}
-                  </StatHelpText>
-                </Stat>
-              </SimpleGrid>
-              
-              <VStack spacing={4} align="stretch">
-                <Divider />
+                <Paper 
+                  variant="outlined" 
+                  sx={{ p: 2 }}
+                >
+                  <List>
+                    <ListItem>
+                      <ListItemText 
+                        primary={
+                          <Box display="flex" alignItems="center">
+                            <FolderIcon color="primary" sx={{ mr: 1 }} />
+                            <Typography fontWeight="medium">src/</Typography>
+                          </Box>
+                        } 
+                      />
+                    </ListItem>
+                    <Box ml={4}>
+                      <List dense disablePadding>
+                        <ListItem>
+                          <ListItemText 
+                            primary={
+                              <Box display="flex" alignItems="center">
+                                <FolderIcon color="primary" sx={{ mr: 1, fontSize: 20 }} />
+                                <Typography>components/</Typography>
+                              </Box>
+                            } 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText 
+                            primary={
+                              <Box display="flex" alignItems="center">
+                                <FolderIcon color="primary" sx={{ mr: 1, fontSize: 20 }} />
+                                <Typography>models/</Typography>
+                              </Box>
+                            } 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText 
+                            primary={
+                              <Box display="flex" alignItems="center">
+                                <FolderIcon color="primary" sx={{ mr: 1, fontSize: 20 }} />
+                                <Typography>controllers/</Typography>
+                              </Box>
+                            } 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText 
+                            primary={
+                              <Box display="flex" alignItems="center">
+                                <InsertDriveFileIcon color="info" sx={{ mr: 1, fontSize: 20 }} />
+                                <Typography>app.js</Typography>
+                              </Box>
+                            } 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText 
+                            primary={
+                              <Box display="flex" alignItems="center">
+                                <InsertDriveFileIcon color="info" sx={{ mr: 1, fontSize: 20 }} />
+                                <Typography>config.js</Typography>
+                              </Box>
+                            } 
+                          />
+                        </ListItem>
+                      </List>
+                    </Box>
+                    <ListItem>
+                      <ListItemText 
+                        primary={
+                          <Box display="flex" alignItems="center">
+                            <FolderIcon color="primary" sx={{ mr: 1 }} />
+                            <Typography fontWeight="medium">public/</Typography>
+                          </Box>
+                        } 
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary={
+                          <Box display="flex" alignItems="center">
+                            <InsertDriveFileIcon color="info" sx={{ mr: 1 }} />
+                            <Typography fontWeight="medium">package.json</Typography>
+                          </Box>
+                        } 
+                      />
+                    </ListItem>
+                  </List>
+                </Paper>
+                
+                <Typography variant="subtitle1" fontWeight="medium" mt={2}>
+                  Активные изменения
+                </Typography>
+                
+                <Paper 
+                  variant="outlined" 
+                  sx={{ p: 2 }}
+                >
+                  <List>
+                    <ListItem>
+                      <ListItemText 
+                        primary={
+                          <Box display="flex" alignItems="center">
+                            <CodeIcon sx={{ mr: 1 }} />
+                            <Typography>src/models/user.model.js</Typography>
+                          </Box>
+                        } 
+                      />
+                      <ListItemSecondaryAction>
+                        <Chip label="В разработке" color="success" size="small" />
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary={
+                          <Box display="flex" alignItems="center">
+                            <CodeIcon sx={{ mr: 1 }} />
+                            <Typography>src/controllers/auth.controller.js</Typography>
+                          </Box>
+                        } 
+                      />
+                      <ListItemSecondaryAction>
+                        <Chip label="Проверка" color="warning" size="small" />
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary={
+                          <Box display="flex" alignItems="center">
+                            <CodeIcon sx={{ mr: 1 }} />
+                            <Typography>src/components/login.component.js</Typography>
+                          </Box>
+                        } 
+                      />
+                      <ListItemSecondaryAction>
+                        <Chip label="Тестирование" color="info" size="small" />
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  </List>
+                </Paper>
+              </Stack>
+            </TabPanel>
+            
+            <TabPanel value={tabValue} index={2}>
+              <Grid container spacing={3}>
+                {/* Пример статистики */}
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Распределение кода по языкам" 
+                      titleTypographyProps={{ variant: 'subtitle1' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <Stack spacing={2}>
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2">JavaScript</Typography>
+                          <Typography variant="body2">68%</Typography>
+                        </Box>
+                        <LinearProgress value={68} variant="determinate" color="warning" />
+                        
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2">HTML</Typography>
+                          <Typography variant="body2">15%</Typography>
+                        </Box>
+                        <LinearProgress value={15} variant="determinate" color="error" />
+                        
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2">CSS</Typography>
+                          <Typography variant="body2">12%</Typography>
+                        </Box>
+                        <LinearProgress value={12} variant="determinate" color="primary" />
+                        
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2">Другие</Typography>
+                          <Typography variant="body2">5%</Typography>
+                        </Box>
+                        <LinearProgress value={5} variant="determinate" color="secondary" />
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Активность" 
+                      titleTypographyProps={{ variant: 'subtitle1' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <List disablePadding>
+                        <ListItem divider>
+                          <ListItemText primary="Коммиты за неделю" />
+                          <Typography variant="body1" fontWeight="medium">23</Typography>
+                        </ListItem>
+                        <ListItem divider>
+                          <ListItemText primary="Pull Requests" />
+                          <Typography variant="body1" fontWeight="medium">7</Typography>
+                        </ListItem>
+                        <ListItem divider>
+                          <ListItemText primary="Изменено файлов" />
+                          <Typography variant="body1" fontWeight="medium">42</Typography>
+                        </ListItem>
+                        <ListItem divider>
+                          <ListItemText primary="Добавлено строк" />
+                          <Typography variant="body1" fontWeight="medium" color="success.main">+1,204</Typography>
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText primary="Удалено строк" />
+                          <Typography variant="body1" fontWeight="medium" color="error.main">-408</Typography>
+                        </ListItem>
+                      </List>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </TabPanel>
+          </Box>
+        </Grid>
+        
+        <Grid item xs={12} lg={4}>
+          <Stack spacing={3}>
+            <Card variant="outlined">
+              <CardHeader title="Обзор проекта" titleTypographyProps={{ variant: 'h6' }} />
+              <Divider />
+              <CardContent>
+                <Grid container spacing={2} mb={3}>
+                  <Grid item xs={6}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Всего задач</Typography>
+                      <Typography variant="h4">{selectedProject.tasksCount}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {completionPercentage}% завершено
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  
+                  <Grid item xs={6}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Активные задачи</Typography>
+                      <Typography variant="h4">{selectedProject.activeTasks}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {selectedProject.activeTasks > 0 ? 'В процессе' : 'Нет активных'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+                
+                <Divider sx={{ my: 2 }} />
                 
                 <Box>
-                  <Heading size="sm" mb={2}>Статистика по коду</Heading>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Статистика по коду
+                  </Typography>
                   
                   {selectedProject.codeStats ? (
-                    <List spacing={2}>
-                      <ListItem display="flex" justifyContent="space-between">
-                        <Text>Файлы</Text>
-                        <Text fontWeight="medium">{selectedProject.codeStats.totalFiles}</Text>
+                    <List dense>
+                      <ListItem divider>
+                        <ListItemText primary="Файлы" />
+                        <Typography variant="body2" fontWeight="medium">
+                          {selectedProject.codeStats.totalFiles}
+                        </Typography>
                       </ListItem>
-                      <ListItem display="flex" justifyContent="space-between">
-                        <Text>Строки кода</Text>
-                        <Text fontWeight="medium">{selectedProject.codeStats.totalLines}</Text>
+                      <ListItem divider>
+                        <ListItemText primary="Строки кода" />
+                        <Typography variant="body2" fontWeight="medium">
+                          {selectedProject.codeStats.totalLines}
+                        </Typography>
                       </ListItem>
                       <ListItem>
-                        <Text mb={1}>Языки</Text>
-                        <HStack spacing={2} wrap="wrap">
-                          {selectedProject.codeStats.languages.map((lang, idx) => (
-                            <Badge key={idx} colorScheme="blue" variant="outline">
-                              {lang.name} ({lang.percentage}%)
-                            </Badge>
-                          ))}
-                        </HStack>
+                        <ListItemText primary="Языки" />
+                        <Box>
+                          <Stack direction="row" spacing={1} flexWrap="wrap">
+                            {selectedProject.codeStats.languages.map((lang, idx) => (
+                              <Chip 
+                                key={idx} 
+                                label={`${lang.name} (${lang.percentage}%)`} 
+                                size="small" 
+                                variant="outlined" 
+                                color="primary"
+                              />
+                            ))}
+                          </Stack>
+                        </Box>
                       </ListItem>
                     </List>
                   ) : (
-                    <Text color="gray.500">Статистика по коду недоступна</Text>
+                    <Typography color="text.secondary">Статистика по коду недоступна</Typography>
                   )}
                 </Box>
                 
-                <Divider />
+                <Divider sx={{ my: 2 }} />
                 
                 <Box>
-                  <Heading size="sm" mb={2}>Последние действия</Heading>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Последние действия
+                  </Typography>
                   
-                  <List spacing={2}>
-                    <ListItem>
-                      <Text fontSize="sm" color="gray.500">2 часа назад</Text>
-                      <Text>Обновлена задача "Авторизация пользователей"</Text>
+                  <List dense>
+                    <ListItem divider>
+                      <ListItemText 
+                        primary="Обновлена задача «Авторизация пользователей»" 
+                        secondary="2 часа назад"
+                        secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                      />
+                    </ListItem>
+                    <ListItem divider>
+                      <ListItemText 
+                        primary="Создана новая задача «Интеграция платежного API»" 
+                        secondary="Вчера"
+                        secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                      />
                     </ListItem>
                     <ListItem>
-                      <Text fontSize="sm" color="gray.500">Вчера</Text>
-                      <Text>Создана новая задача "Интеграция платежного API"</Text>
-                    </ListItem>
-                    <ListItem>
-                      <Text fontSize="sm" color="gray.500">3 дня назад</Text>
-                      <Text>Изменен статус проекта на "Активный"</Text>
+                      <ListItemText 
+                        primary="Изменен статус проекта на «Активный»" 
+                        secondary="3 дня назад"
+                        secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                      />
                     </ListItem>
                   </List>
                 </Box>
-              </VStack>
-            </CardBody>
-          </Card>
-          
-          <Card borderColor={borderColor} boxShadow="sm">
-            <CardHeader>
-              <Heading size="md">Участники проекта</Heading>
-            </CardHeader>
-            <CardBody>
-              <VStack align="stretch" spacing={3}>
-                <HStack justify="space-between">
-                  <VStack align="start" spacing={0}>
-                    <Text fontWeight="medium">Александр Иванов</Text>
-                    <Text fontSize="sm" color="gray.500">Менеджер проекта</Text>
-                  </VStack>
-                  <Badge colorScheme="green">Онлайн</Badge>
-                </HStack>
+              </CardContent>
+            </Card>
+            
+            <Card variant="outlined">
+              <CardHeader title="Участники проекта" titleTypographyProps={{ variant: 'h6' }} />
+              <Divider />
+              <CardContent>
+                <List>
+                  <ListItem divider>
+                    <ListItemText
+                      primary="Александр Иванов"
+                      secondary="Менеджер проекта"
+                    />
+                    <ListItemSecondaryAction>
+                      <Chip label="Онлайн" color="success" size="small" />
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                  
+                  <ListItem divider>
+                    <ListItemText
+                      primary="Мария Петрова"
+                      secondary="Разработчик"
+                    />
+                    <ListItemSecondaryAction>
+                      <Chip label="Офлайн" color="default" size="small" />
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                  
+                  <ListItem divider>
+                    <ListItemText
+                      primary="Сергей Сидоров"
+                      secondary="Разработчик"
+                    />
+                    <ListItemSecondaryAction>
+                      <Chip label="Офлайн" color="default" size="small" />
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                  
+                  <ListItem>
+                    <ListItemText
+                      primary="ИИ-ассистент"
+                      secondary="Помощник"
+                    />
+                    <ListItemSecondaryAction>
+                      <Chip label="Активен" color="secondary" size="small" />
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                </List>
                 
-                <Divider />
-                
-                <HStack justify="space-between">
-                  <VStack align="start" spacing={0}>
-                    <Text fontWeight="medium">Мария Петрова</Text>
-                    <Text fontSize="sm" color="gray.500">Разработчик</Text>
-                  </VStack>
-                  <Badge colorScheme="gray">Офлайн</Badge>
-                </HStack>
-                
-                <Divider />
-                
-                <HStack justify="space-between">
-                  <VStack align="start" spacing={0}>
-                    <Text fontWeight="medium">Сергей Сидоров</Text>
-                    <Text fontSize="sm" color="gray.500">Разработчик</Text>
-                  </VStack>
-                  <Badge colorScheme="gray">Офлайн</Badge>
-                </HStack>
-                
-                <Divider />
-                
-                <HStack justify="space-between">
-                  <VStack align="start" spacing={0}>
-                    <Text fontWeight="medium">ИИ-ассистент</Text>
-                    <Text fontSize="sm" color="gray.500">Помощник</Text>
-                  </VStack>
-                  <Badge colorScheme="purple">Активен</Badge>
-                </HStack>
-                
-                <Button size="sm" leftIcon={<AddIcon />} mt={2}>
+                <Button 
+                  size="small" 
+                  startIcon={<AddIcon />} 
+                  sx={{ mt: 2 }}
+                  fullWidth
+                  variant="outlined"
+                >
                   Добавить участника
                 </Button>
-              </VStack>
-            </CardBody>
-          </Card>
-        </GridItem>
+              </CardContent>
+            </Card>
+          </Stack>
+        </Grid>
       </Grid>
     </Box>
   );

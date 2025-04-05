@@ -2,34 +2,37 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box,
-  Heading,
-  Text,
-  SimpleGrid,
-  Flex,
-  VStack,
-  HStack,
-  Button,
-  Select,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
-  FormControl,
-  FormLabel,
-  useColorModeValue,
-  Spinner,
+  Typography,
+  Grid,
   Card,
-  CardBody,
-  Badge,
-  Menu,
-  MenuButton,
-  MenuList,
+  CardContent,
+  CardHeader,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
   MenuItem,
+  Chip,
+  Paper,
+  CircularProgress,
+  Divider,
+  Tabs,
+  Tab,
+  Stack,
   IconButton,
-  useToast
-} from '@chakra-ui/react';
+  Menu,
+  alpha,
+  useTheme,
+  useMediaQuery,
+  SelectChangeEvent,
+  Badge,
+  List,
+  ListItem,
+  ListItemText,
+  Tooltip
+} from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { useSnackbar } from 'notistack';
 import {
   fetchTasksStatusDistribution,
   fetchTasksPriorityDistribution,
@@ -48,16 +51,44 @@ import PieChart from '../../components/analytics/PieChart';
 import { Project } from '../../store/slices/projectsSlice';
 import { fetchProjects } from '../../store/slices/projectsSlice';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const FilterIcon = () => <span>🔎</span>;
-const RefreshIcon = () => <span>🔄</span>;
-const DownloadIcon = () => <span>⬇️</span>;
-const PrintIcon = () => <span>🖨️</span>;
+// Иконки
+import RefreshIcon from '@mui/icons-material/Refresh';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import PrintIcon from '@mui/icons-material/Print';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`analytics-tabpanel-${index}`}
+      aria-labelledby={`analytics-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 2 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 const AnalyticsPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const toast = useToast();
+  const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   // Получаем данные из Redux
   const {
@@ -81,8 +112,11 @@ const AnalyticsPage: React.FC = () => {
   // Состояние для выбранного проекта
   const [selectedProject, setSelectedProject] = useState<number | undefined>(undefined);
   
-  // Цвета
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  // Состояние для меню экспорта
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
+  
+  // Состояние для активной вкладки
+  const [tabValue, setTabValue] = useState(0);
   
   // Преобразование данных для компонентов визуализации
   const statusDistributionData = toPieChartData(
@@ -211,12 +245,12 @@ const AnalyticsPage: React.FC = () => {
   }
   
   // Обработчик изменения временного диапазона
-  const handleTimeRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleTimeRangeChange = (e: SelectChangeEvent) => {
     setTimeRange(e.target.value);
   };
   
   // Обработчик изменения проекта
-  const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleProjectChange = (e: SelectChangeEvent) => {
     const value = e.target.value;
     setSelectedProject(value ? Number(value) : undefined);
   };
@@ -228,42 +262,50 @@ const AnalyticsPage: React.FC = () => {
     setFilters({});
   };
   
+  // Обработчик открытия меню экспорта
+  const handleOpenExportMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setExportMenuAnchor(event.currentTarget);
+  };
+  
+  // Обработчик закрытия меню экспорта
+  const handleCloseExportMenu = () => {
+    setExportMenuAnchor(null);
+  };
+  
   // Обработчик экспорта данных (заглушка)
-  const handleExport = () => {
-    toast({
-      title: 'Экспорт данных',
-      description: 'Функция экспорта данных будет доступна в следующей версии',
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
+  const handleExport = (format: string) => {
+    handleCloseExportMenu();
+    enqueueSnackbar('Функция экспорта данных будет доступна в следующей версии', {
+      variant: 'info',
+      autoHideDuration: 3000,
     });
   };
   
   // Обработчик печати отчета (заглушка)
   const handlePrint = () => {
-    toast({
-      title: 'Печать отчета',
-      description: 'Функция печати отчета будет доступна в следующей версии',
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
+    handleCloseExportMenu();
+    enqueueSnackbar('Функция печати отчета будет доступна в следующей версии', {
+      variant: 'info',
+      autoHideDuration: 3000,
     });
   };
   
+  // Обработчик переключения вкладок
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
   return (
     <Box>
-      <Flex justifyContent="space-between" alignItems="center" mb={6}>
-        <VStack align="flex-start" spacing={1}>
-          <Heading size="lg">Аналитика</Heading>
-          <Text color="gray.500">
-            Статистика и метрики производительности ИИ-ассистента
-          </Text>
-        </VStack>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Аналитика
+        </Typography>
         
-        <HStack spacing={2}>
+        <Stack direction="row" spacing={1}>
           <Button 
-            leftIcon={<RefreshIcon />} 
-            variant="outline" 
+            variant="outlined" 
+            startIcon={<RefreshIcon />} 
             onClick={() => {
               // Повторно загружаем данные с текущими фильтрами
               const filterParams: AnalyticsFilterParams = {
@@ -278,446 +320,743 @@ const AnalyticsPage: React.FC = () => {
               dispatch(fetchUserActivityStats(filterParams));
               dispatch(fetchProjectStats(filterParams));
             }}
-            isLoading={isLoading}
+            disabled={isLoading}
           >
             Обновить
           </Button>
           
-          <Menu>
-            <MenuButton
-              as={Button}
-              leftIcon={<DownloadIcon />}
-              variant="outline"
-            >
-              Экспорт
-            </MenuButton>
-            <MenuList>
-              <MenuItem onClick={handleExport}>Экспорт в CSV</MenuItem>
-              <MenuItem onClick={handleExport}>Экспорт в Excel</MenuItem>
-              <MenuItem onClick={handleExport}>Экспорт в PDF</MenuItem>
-              <MenuItem onClick={handlePrint} icon={<PrintIcon />}>Печать отчета</MenuItem>
-            </MenuList>
-          </Menu>
-        </HStack>
-      </Flex>
-      
-      <Card borderColor={borderColor} boxShadow="sm" mb={6}>
-        <CardBody>
-          <Flex 
-            direction={{ base: 'column', md: 'row' }} 
-            justify="space-between" 
-            align={{ base: 'stretch', md: 'center' }}
-            gap={4}
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadIcon />}
+            endIcon={<KeyboardArrowDownIcon />}
+            onClick={handleOpenExportMenu}
           >
-            <HStack spacing={4}>
-              <FormControl width="auto">
-                <FormLabel fontSize="sm">Период</FormLabel>
-                <Select 
-                  value={timeRange} 
-                  onChange={handleTimeRangeChange}
-                  size="sm"
-                >
-                  <option value="7days">Последние 7 дней</option>
-                  <option value="30days">Последние 30 дней</option>
-                  <option value="90days">Последние 90 дней</option>
-                  <option value="year">Последний год</option>
-                </Select>
-              </FormControl>
-              
-              <FormControl width="auto">
-                <FormLabel fontSize="sm">Проект</FormLabel>
-                <Select 
-                  value={selectedProject || ''} 
-                  onChange={handleProjectChange}
-                  size="sm"
-                  placeholder="Все проекты"
-                >
-                  {projects.map(project => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </Select>
-              </FormControl>
-            </HStack>
+            Экспорт
+          </Button>
+          <Menu
+            anchorEl={exportMenuAnchor}
+            open={Boolean(exportMenuAnchor)}
+            onClose={handleCloseExportMenu}
+          >
+            <MenuItem onClick={() => handleExport('csv')}>Экспорт в CSV</MenuItem>
+            <MenuItem onClick={() => handleExport('excel')}>Экспорт в Excel</MenuItem>
+            <MenuItem onClick={() => handleExport('pdf')}>Экспорт в PDF</MenuItem>
+            <MenuItem onClick={handlePrint}>
+              <Box display="flex" alignItems="center">
+                <PrintIcon fontSize="small" sx={{ mr: 1 }} />
+                <Typography>Печать отчета</Typography>
+              </Box>
+            </MenuItem>
+          </Menu>
+        </Stack>
+      </Box>
+      
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid 
+            container 
+            spacing={2} 
+            alignItems="center"
+            direction={{ xs: 'column', md: 'row' }}
+          >
+            <Grid item xs={12} md={8}>
+              <Stack 
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                width="100%"
+              >
+                <FormControl fullWidth size="small">
+                  <InputLabel id="time-range-label">Период</InputLabel>
+                  <Select
+                    labelId="time-range-label"
+                    value={timeRange}
+                    label="Период"
+                    onChange={handleTimeRangeChange}
+                  >
+                    <MenuItem value="7days">Последние 7 дней</MenuItem>
+                    <MenuItem value="30days">Последние 30 дней</MenuItem>
+                    <MenuItem value="90days">Последние 90 дней</MenuItem>
+                    <MenuItem value="year">Последний год</MenuItem>
+                  </Select>
+                </FormControl>
+                
+                <FormControl fullWidth size="small">
+                  <InputLabel id="project-label">Проект</InputLabel>
+                  <Select
+                    labelId="project-label"
+                    value={selectedProject?.toString() || ''}
+                    label="Проект"
+                    onChange={handleProjectChange}
+                    displayEmpty
+                  >
+                    <MenuItem value="">Все проекты</MenuItem>
+                    {projects.map(project => (
+                      <MenuItem key={project.id} value={project.id.toString()}>
+                        {project.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Stack>
+            </Grid>
             
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={handleResetFilters}
-            >
-              Сбросить фильтры
-            </Button>
-          </Flex>
+            <Grid item xs={12} md={4} textAlign={{ xs: 'center', md: 'right' }}>
+              <Button 
+                variant="text" 
+                onClick={handleResetFilters}
+              >
+                Сбросить фильтры
+              </Button>
+            </Grid>
+          </Grid>
           
           {/* Индикаторы активных фильтров */}
-          {(selectedProject !== undefined) && (
-            <Flex wrap="wrap" gap={2} mt={4}>
+          {(selectedProject !== undefined || timeRange !== '30days') && (
+            <Stack 
+              direction="row" 
+              spacing={1} 
+              flexWrap="wrap" 
+              mt={2}
+            >
               {selectedProject !== undefined && (
-                <Badge colorScheme="purple" borderRadius="full" px={2} py={1}>
-                  Проект: {projects.find(p => p.id === selectedProject)?.name || selectedProject}
-                </Badge>
+                <Chip 
+                  label={`Проект: ${projects.find(p => p.id === selectedProject)?.name || selectedProject}`} 
+                  color="secondary" 
+                  onDelete={() => setSelectedProject(undefined)} 
+                />
               )}
               
-              <Badge colorScheme="blue" borderRadius="full" px={2} py={1}>
-                Период: {
+              <Chip 
+                label={`Период: ${
                   timeRange === '7days' ? 'Последние 7 дней' :
                   timeRange === '30days' ? 'Последние 30 дней' :
                   timeRange === '90days' ? 'Последние 90 дней' :
                   'Последний год'
-                }
-              </Badge>
-            </Flex>
+                }`} 
+                color="primary" 
+                onDelete={() => setTimeRange('30days')} 
+              />
+            </Stack>
           )}
-        </CardBody>
+        </CardContent>
       </Card>
       
-      <Tabs variant="enclosed" colorScheme="blue" isLazy>
-        <TabList>
-          <Tab>Обзор</Tab>
-          <Tab>Задачи</Tab>
-          <Tab>Производительность</Tab>
-          <Tab>Пользователи</Tab>
-          <Tab>Проекты</Tab>
-        </TabList>
+      <Box sx={{ width: '100%' }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange} 
+            aria-label="analytics tabs"
+            variant="scrollable"
+            scrollButtons="auto"
+          >
+            <Tab label="Обзор" id="analytics-tab-0" aria-controls="analytics-tabpanel-0" />
+            <Tab label="Задачи" id="analytics-tab-1" aria-controls="analytics-tabpanel-1" />
+            <Tab label="Производительность" id="analytics-tab-2" aria-controls="analytics-tabpanel-2" />
+            <Tab label="Пользователи" id="analytics-tab-3" aria-controls="analytics-tabpanel-3" />
+            <Tab label="Проекты" id="analytics-tab-4" aria-controls="analytics-tabpanel-4" />
+          </Tabs>
+        </Box>
         
-        <TabPanels>
-          {/* Панель обзора */}
-          <TabPanel p={4}>
-            {isLoading ? (
-              <Flex justify="center" align="center" p={10}>
-                <Spinner size="xl" />
-              </Flex>
-            ) : (
-              <Box>
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
-                  <LineChart 
-                    title="Создание и выполнение задач"
-                    description="Количество созданных и выполненных задач по дням"
-                    data={completionTimelineData.created}
-                    height={300}
-                    color="blue.500"
-                  />
-                  
-                  <LineChart 
-                    title="Производительность"
-                    description="Соотношение планового и фактического времени выполнения"
-                    data={performanceTimelineData.actual}
-                    height={300}
-                    color="green.500"
-                    valueSuffix=" мин."
-                  />
-                </SimpleGrid>
+        {/* Панель обзора */}
+        <TabPanel value={tabValue} index={0}>
+          {isLoading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" p={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box>
+              <Grid container spacing={3} mb={3}>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Создание и выполнение задач" 
+                      subheader="Количество созданных и выполненных задач по дням" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <LineChart 
+                        title="" 
+                        data={completionTimelineData.created} 
+                        height={300} 
+                        color={theme.palette.primary.main}
+                        compareData={completionTimelineData.completed}
+                        compareColor={theme.palette.success.main}
+                        mainLabel="Созданные"
+                        compareLabel="Выполненные"
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
                 
-                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-                  <PieChart 
-                    title="Распределение статусов задач"
-                    description="Количество задач в каждом статусе"
-                    data={statusDistributionData}
-                    size={250}
-                    showLegend={true}
-                    donut={true}
-                  />
-                  
-                  <PieChart 
-                    title="Распределение приоритетов"
-                    description="Количество задач по приоритетам"
-                    data={priorityDistributionData}
-                    size={250}
-                    showLegend={true}
-                    donut={true}
-                    colorScheme={['#E53E3E', '#ED8936', '#3182CE', '#718096']}
-                  />
-                  
-                  <BarChart 
-                    title="Активность пользователей"
-                    description="Количество выполненных задач по пользователям"
-                    data={userActivityData.slice(0, 5)}
-                    height={250}
-                    horizontal={true}
-                  />
-                </SimpleGrid>
-              </Box>
-            )}
-          </TabPanel>
-          
-          {/* Панель задач */}
-          <TabPanel p={4}>
-            {isLoading ? (
-              <Flex justify="center" align="center" p={10}>
-                <Spinner size="xl" />
-              </Flex>
-            ) : (
-              <Box>
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
-                  <LineChart 
-                    title="Создание задач"
-                    description="Количество созданных задач по дням"
-                    data={completionTimelineData.created}
-                    height={300}
-                    color="blue.500"
-                  />
-                  
-                  <LineChart 
-                    title="Выполнение задач"
-                    description="Количество выполненных задач по дням"
-                    data={completionTimelineData.completed}
-                    height={300}
-                    color="green.500"
-                  />
-                </SimpleGrid>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Производительность" 
+                      subheader="Соотношение планового и фактического времени выполнения" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <LineChart 
+                        title="" 
+                        data={performanceTimelineData.estimated} 
+                        height={300} 
+                        color={theme.palette.info.main}
+                        compareData={performanceTimelineData.actual}
+                        compareColor={theme.palette.success.main}
+                        mainLabel="Плановое время"
+                        compareLabel="Фактическое время"
+                        valueSuffix=" мин."
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+              
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={4}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Распределение статусов задач" 
+                      subheader="Количество задач в каждом статусе" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <PieChart 
+                        title="" 
+                        data={statusDistributionData} 
+                        donut={true}
+                        showLegend={true}
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
                 
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                  <PieChart 
-                    title="Статусы задач"
-                    description="Распределение задач по статусам"
-                    data={statusDistributionData}
-                    showLegend={true}
-                  />
-                  
-                  <PieChart 
-                    title="Приоритеты задач"
-                    description="Распределение задач по приоритетам"
-                    data={priorityDistributionData}
-                    showLegend={true}
-                    colorScheme={['#E53E3E', '#ED8936', '#3182CE', '#718096']}
-                  />
-                </SimpleGrid>
-              </Box>
-            )}
-          </TabPanel>
-          
-          {/* Панель производительности */}
-          <TabPanel p={4}>
-            {isLoading ? (
-              <Flex justify="center" align="center" p={10}>
-                <Spinner size="xl" />
-              </Flex>
-            ) : (
-              <Box>
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
-                  <LineChart 
-                    title="Плановое время"
-                    description="Плановое время выполнения задач по дням (мин.)"
-                    data={performanceTimelineData.estimated}
-                    height={300}
-                    color="blue.500"
-                    valueSuffix=" мин."
-                  />
-                  
-                  <LineChart 
-                    title="Фактическое время"
-                    description="Фактическое время выполнения задач по дням (мин.)"
-                    data={performanceTimelineData.actual}
-                    height={300}
-                    color="green.500"
-                    valueSuffix=" мин."
-                  />
-                </SimpleGrid>
+                <Grid item xs={12} md={4}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Распределение приоритетов" 
+                      subheader="Количество задач по приоритетам" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <PieChart 
+                        title="" 
+                        data={priorityDistributionData} 
+                        donut={true}
+                        showLegend={true}
+                        colorScheme={[
+                          theme.palette.error.main,
+                          theme.palette.warning.main,
+                          theme.palette.info.main,
+                          theme.palette.grey[500]
+                        ]}
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
                 
-                <Card p={4} borderColor={borderColor} boxShadow="sm">
-                  <Heading size="md" mb={4}>Эффективность ИИ-ассистента</Heading>
-                  
-                  <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6}>
-                    <Flex 
-                      direction="column" 
-                      alignItems="center" 
-                      justifyContent="center" 
-                      p={4} 
-                      bg={useColorModeValue('blue.50', 'blue.900')}
-                      borderRadius="md"
-                    >
-                      <Text fontSize="sm" color="gray.500">Средняя скорость</Text>
-                      <Text fontSize="2xl" fontWeight="bold">87%</Text>
-                      <Badge colorScheme="green">Выше среднего</Badge>
-                    </Flex>
-                    
-                    <Flex 
-                      direction="column" 
-                      alignItems="center" 
-                      justifyContent="center" 
-                      p={4} 
-                      bg={useColorModeValue('green.50', 'green.900')}
-                      borderRadius="md"
-                    >
-                      <Text fontSize="sm" color="gray.500">Точность кода</Text>
-                      <Text fontSize="2xl" fontWeight="bold">92%</Text>
-                      <Badge colorScheme="green">Отлично</Badge>
-                    </Flex>
-                    
-                    <Flex 
-                      direction="column" 
-                      alignItems="center" 
-                      justifyContent="center" 
-                      p={4} 
-                      bg={useColorModeValue('purple.50', 'purple.900')}
-                      borderRadius="md"
-                    >
-                      <Text fontSize="sm" color="gray.500">Успешные PR</Text>
-                      <Text fontSize="2xl" fontWeight="bold">78%</Text>
-                      <Badge colorScheme="blue">Хорошо</Badge>
-                    </Flex>
-                    
-                    <Flex 
-                      direction="column" 
-                      alignItems="center" 
-                      justifyContent="center" 
-                      p={4} 
-                      bg={useColorModeValue('orange.50', 'orange.900')}
-                      borderRadius="md"
-                    >
-                      <Text fontSize="sm" color="gray.500">Экономия времени</Text>
-                      <Text fontSize="2xl" fontWeight="bold">67%</Text>
-                      <Badge colorScheme="orange">Средне</Badge>
-                    </Flex>
-                  </SimpleGrid>
+                <Grid item xs={12} md={4}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Активность пользователей" 
+                      subheader="Количество выполненных задач по пользователям" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <BarChart 
+                        title=""
+                        data={userActivityData.slice(0, 5)}
+                        height={250}
+                        horizontal={true}
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </TabPanel>
+        
+        {/* Панель задач */}
+        <TabPanel value={tabValue} index={1}>
+          {isLoading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" p={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardHeader 
+                    title="Создание задач" 
+                    subheader="Количество созданных задач по дням" 
+                    titleTypographyProps={{ variant: 'h6' }}
+                    subheaderTypographyProps={{ variant: 'body2' }}
+                  />
+                  <Divider />
+                  <CardContent>
+                    <LineChart 
+                      title="" 
+                      data={completionTimelineData.created} 
+                      height={300} 
+                      color={theme.palette.primary.main}
+                    />
+                  </CardContent>
                 </Card>
-              </Box>
-            )}
-          </TabPanel>
-          
-          {/* Панель пользователей */}
-          <TabPanel p={4}>
-            {isLoading ? (
-              <Flex justify="center" align="center" p={10}>
-                <Spinner size="xl" />
-              </Flex>
-            ) : (
-              <Box>
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
-                  <BarChart 
-                    title="Созданные задачи"
-                    description="Количество созданных задач по пользователям"
-                    data={userActivityStats.map(user => ({
-                      label: user.user.name,
-                      value: user.tasksCreated
-                    }))}
-                    height={300}
-                    horizontal={true}
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardHeader 
+                    title="Выполнение задач" 
+                    subheader="Количество выполненных задач по дням" 
+                    titleTypographyProps={{ variant: 'h6' }}
+                    subheaderTypographyProps={{ variant: 'body2' }}
                   />
-                  
-                  <BarChart 
-                    title="Выполненные задачи"
-                    description="Количество выполненных задач по пользователям"
-                    data={userActivityStats.map(user => ({
-                      label: user.user.name,
-                      value: user.tasksCompleted
-                    }))}
-                    height={300}
-                    horizontal={true}
+                  <Divider />
+                  <CardContent>
+                    <LineChart 
+                      title="" 
+                      data={completionTimelineData.completed} 
+                      height={300} 
+                      color={theme.palette.success.main}
+                    />
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardHeader 
+                    title="Статусы задач" 
+                    subheader="Распределение задач по статусам" 
+                    titleTypographyProps={{ variant: 'h6' }}
+                    subheaderTypographyProps={{ variant: 'body2' }}
                   />
-                </SimpleGrid>
+                  <Divider />
+                  <CardContent sx={{ height: 350 }}>
+                    <PieChart 
+                      title="" 
+                      data={statusDistributionData} 
+                      showLegend={true}
+                    />
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardHeader 
+                    title="Приоритеты задач" 
+                    subheader="Распределение задач по приоритетам" 
+                    titleTypographyProps={{ variant: 'h6' }}
+                    subheaderTypographyProps={{ variant: 'body2' }}
+                  />
+                  <Divider />
+                  <CardContent sx={{ height: 350 }}>
+                    <PieChart 
+                      title="" 
+                      data={priorityDistributionData} 
+                      showLegend={true}
+                      colorScheme={[
+                        theme.palette.error.main,
+                        theme.palette.warning.main,
+                        theme.palette.info.main,
+                        theme.palette.grey[500]
+                      ]}
+                    />
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          )}
+        </TabPanel>
+        
+        {/* Панель производительности */}
+        <TabPanel value={tabValue} index={2}>
+          {isLoading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" p={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box>
+              <Grid container spacing={3} mb={3}>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Плановое время" 
+                      subheader="Плановое время выполнения задач по дням (мин.)" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <LineChart 
+                        title="" 
+                        data={performanceTimelineData.estimated} 
+                        height={300} 
+                        color={theme.palette.primary.main}
+                        valueSuffix=" мин."
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
                 
-                <Card p={4} borderColor={borderColor} boxShadow="sm">
-                  <Heading size="md" mb={4}>Лидеры по эффективности</Heading>
-                  
-                  <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Фактическое время" 
+                      subheader="Фактическое время выполнения задач по дням (мин.)" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <LineChart 
+                        title="" 
+                        data={performanceTimelineData.actual} 
+                        height={300} 
+                        color={theme.palette.success.main}
+                        valueSuffix=" мин."
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+              
+              <Card variant="outlined">
+                <CardHeader 
+                  title="Эффективность ИИ-ассистента" 
+                  titleTypographyProps={{ variant: 'h6' }}
+                />
+                <Divider />
+                <CardContent>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Paper 
+                        variant="outlined" 
+                        sx={{ 
+                          p: 3, 
+                          textAlign: 'center',
+                          bgcolor: alpha(theme.palette.primary.main, 0.05)
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          Средняя скорость
+                        </Typography>
+                        <Typography variant="h4" color="primary" gutterBottom>
+                          87%
+                        </Typography>
+                        <Chip label="Выше среднего" color="success" size="small" />
+                      </Paper>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Paper 
+                        variant="outlined" 
+                        sx={{ 
+                          p: 3, 
+                          textAlign: 'center',
+                          bgcolor: alpha(theme.palette.success.main, 0.05)
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          Точность кода
+                        </Typography>
+                        <Typography variant="h4" color="success" gutterBottom>
+                          92%
+                        </Typography>
+                        <Chip label="Отлично" color="success" size="small" />
+                      </Paper>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Paper 
+                        variant="outlined" 
+                        sx={{ 
+                          p: 3, 
+                          textAlign: 'center',
+                          bgcolor: alpha(theme.palette.secondary.main, 0.05)
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          Успешные PR
+                        </Typography>
+                        <Typography variant="h4" color="secondary" gutterBottom>
+                          78%
+                        </Typography>
+                        <Chip label="Хорошо" color="primary" size="small" />
+                      </Paper>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Paper 
+                        variant="outlined" 
+                        sx={{ 
+                          p: 3, 
+                          textAlign: 'center',
+                          bgcolor: alpha(theme.palette.warning.main, 0.05)
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          Экономия времени
+                        </Typography>
+                        <Typography variant="h4" color="warning.dark" gutterBottom>
+                          67%
+                        </Typography>
+                        <Chip label="Средне" color="warning" size="small" />
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Box>
+          )}
+        </TabPanel>
+        
+        {/* Панель пользователей */}
+        <TabPanel value={tabValue} index={3}>
+          {isLoading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" p={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box>
+              <Grid container spacing={3} mb={3}>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Созданные задачи" 
+                      subheader="Количество созданных задач по пользователям" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <BarChart 
+                        title=""
+                        data={userActivityStats.map(user => ({
+                          label: user.user.name,
+                          value: user.tasksCreated
+                        }))}
+                        height={300}
+                        horizontal={true}
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Выполненные задачи" 
+                      subheader="Количество выполненных задач по пользователям" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <BarChart 
+                        title=""
+                        data={userActivityStats.map(user => ({
+                          label: user.user.name,
+                          value: user.tasksCompleted
+                        }))}
+                        height={300}
+                        horizontal={true}
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+              
+              <Card variant="outlined">
+                <CardHeader 
+                  title="Лидеры по эффективности" 
+                  titleTypographyProps={{ variant: 'h6' }}
+                />
+                <Divider />
+                <CardContent>
+                  <Grid container spacing={3}>
                     {userActivityStats.slice(0, 3).map((user, index) => (
-                      <Card key={user.user.id} p={4} variant="outline">
-                        <VStack spacing={2} align="center">
-                          <Badge colorScheme={index === 0 ? 'yellow' : index === 1 ? 'gray' : 'orange'} fontSize="lg" p={2} borderRadius="full">
-                            #{index + 1}
-                          </Badge>
-                          <Text fontWeight="bold">{user.user.name}</Text>
-                          <HStack divider={<Text mx={2}>|</Text>}>
-                            <VStack spacing={0}>
-                              <Text fontSize="sm" color="gray.500">Задачи</Text>
-                              <Text fontWeight="medium">{user.tasksCompleted}</Text>
-                            </VStack>
-                            <VStack spacing={0}>
-                              <Text fontSize="sm" color="gray.500">Код</Text>
-                              <Text fontWeight="medium">{user.codeReviewed}</Text>
-                            </VStack>
-                          </HStack>
-                        </VStack>
-                      </Card>
+                      <Grid item xs={12} md={4} key={user.user.id}>
+                        <Card variant="outlined">
+                          <CardContent sx={{ textAlign: 'center' }}>
+                            <Badge
+                              color={index === 0 ? 'warning' : index === 1 ? 'secondary' : 'error'}
+                              badgeContent={`#${index + 1}`}
+                              sx={{ 
+                                '& .MuiBadge-badge': { 
+                                  fontSize: 16,
+                                  width: 30,
+                                  height: 30,
+                                  borderRadius: '50%'
+                                }
+                              }}
+                            >
+                              <Avatar
+                                sx={{ 
+                                  width: 60, 
+                                  height: 60, 
+                                  bgcolor: theme.palette.primary.main,
+                                  mx: 'auto',
+                                  mb: 1
+                                }}
+                              >
+                                {user.user.name.charAt(0)}
+                              </Avatar>
+                            </Badge>
+                            <Typography variant="h6" gutterBottom>
+                              {user.user.name}
+                            </Typography>
+                            <Divider sx={{ my: 1 }} />
+                            <Grid container spacing={2} mt={1}>
+                              <Grid item xs={6}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Задачи
+                                </Typography>
+                                <Typography variant="h6">
+                                  {user.tasksCompleted}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Код
+                                </Typography>
+                                <Typography variant="h6">
+                                  {user.codeReviewed}
+                                </Typography>
+                              </Grid>
+                            </Grid>
+                          </CardContent>
+                        </Card>
+                      </Grid>
                     ))}
-                  </SimpleGrid>
-                </Card>
-              </Box>
-            )}
-          </TabPanel>
-          
-          {/* Панель проектов */}
-          <TabPanel p={4}>
-            {isLoading ? (
-              <Flex justify="center" align="center" p={10}>
-                <Spinner size="xl" />
-              </Flex>
-            ) : (
-              <Box>
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
-                  <BarChart 
-                    title="Количество задач"
-                    description="Количество задач по проектам"
-                    data={projectStats.map(project => ({
-                      label: project.name,
-                      value: project.tasksCount
-                    }))}
-                    height={300}
-                    horizontal={true}
-                  />
-                  
-                  <BarChart 
-                    title="Процент выполнения"
-                    description="Процент выполненных задач по проектам"
-                    data={projectStats.map(project => ({
-                      label: project.name,
-                      value: project.completionRate
-                    }))}
-                    height={300}
-                    horizontal={true}
-                    valueSuffix="%"
-                    maxValue={100}
-                    defaultColor="green.500"
-                  />
-                </SimpleGrid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Box>
+          )}
+        </TabPanel>
+        
+        {/* Панель проектов */}
+        <TabPanel value={tabValue} index={4}>
+          {isLoading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" p={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box>
+              <Grid container spacing={3} mb={3}>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Количество задач" 
+                      subheader="Количество задач по проектам" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <BarChart 
+                        title=""
+                        data={projectStats.map(project => ({
+                          label: project.name,
+                          value: project.tasksCount
+                        }))}
+                        height={300}
+                        horizontal={true}
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
                 
-                <Card p={4} borderColor={borderColor} boxShadow="sm">
-                  <Heading size="md" mb={4}>Топ проектов по эффективности</Heading>
-                  
-                  <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6}>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardHeader 
+                      title="Процент выполнения" 
+                      subheader="Процент выполненных задач по проектам" 
+                      titleTypographyProps={{ variant: 'h6' }}
+                      subheaderTypographyProps={{ variant: 'body2' }}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <BarChart 
+                        title=""
+                        data={projectStats.map(project => ({
+                          label: project.name,
+                          value: project.completionRate
+                        }))}
+                        height={300}
+                        horizontal={true}
+                        valueSuffix="%"
+                        maxValue={100}
+                        defaultColor={theme.palette.success.main}
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+              
+              <Card variant="outlined">
+                <CardHeader 
+                  title="Топ проектов по эффективности" 
+                  titleTypographyProps={{ variant: 'h6' }}
+                />
+                <Divider />
+                <CardContent>
+                  <Grid container spacing={3}>
                     {projectStats
                       .sort((a, b) => b.completionRate - a.completionRate)
                       .slice(0, 4)
                       .map(project => (
-                        <Card key={project.id} p={4} variant="outline">
-                          <VStack spacing={2} align="stretch">
-                            <Text fontWeight="bold" isTruncated>{project.name}</Text>
-                            <Text color="gray.500" fontSize="sm">{project.tasksCount} задач</Text>
-                            <HStack>
-                              <Text fontWeight="medium">{project.completionRate}%</Text>
-                              <Box flex="1">
-                                <Box 
-                                  w="100%" 
-                                  h="6px" 
-                                  bg="gray.100" 
-                                  borderRadius="full"
-                                  overflow="hidden"
-                                >
-                                  <Box 
-                                    w={`${project.completionRate}%`} 
-                                    h="100%" 
-                                    bg={
-                                      project.completionRate > 75 ? 'green.500' :
-                                      project.completionRate > 50 ? 'blue.500' :
-                                      project.completionRate > 25 ? 'orange.500' :
-                                      'red.500'
-                                    }
-                                  />
-                                </Box>
+                        <Grid item xs={12} sm={6} md={3} key={project.id}>
+                          <Paper variant="outlined" sx={{ p: 3 }}>
+                            <Typography variant="h6" noWrap title={project.name}>
+                              {project.name.length > 20 ? project.name.substring(0, 20) + '...' : project.name}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                              {project.tasksCount} задач
+                            </Typography>
+                            <Box display="flex" alignItems="center" mt={2}>
+                              <Typography variant="body1" fontWeight="medium" sx={{ mr: 1 }}>
+                                {project.completionRate}%
+                              </Typography>
+                              <Box sx={{ flexGrow: 1 }}>
+                                <LinearProgress 
+                                  variant="determinate" 
+                                  value={project.completionRate} 
+                                  color={
+                                    project.completionRate > 75 ? 'success' :
+                                    project.completionRate > 50 ? 'primary' :
+                                    project.completionRate > 25 ? 'warning' :
+                                    'error'
+                                  }
+                                  sx={{ height: 8, borderRadius: 4 }}
+                                />
                               </Box>
-                            </HStack>
-                          </VStack>
-                        </Card>
+                            </Box>
+                          </Paper>
+                        </Grid>
                       ))}
-                  </SimpleGrid>
-                </Card>
-              </Box>
-            )}
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Box>
+          )}
+        </TabPanel>
+      </Box>
     </Box>
   );
 };

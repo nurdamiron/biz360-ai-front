@@ -24,7 +24,8 @@ import {
   Stack,
   useMediaQuery,
   CircularProgress,
-  Fade
+  Fade,
+  Avatar
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -37,8 +38,8 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import BusinessIcon from '@mui/icons-material/Business';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -114,6 +115,8 @@ const LoginPage: React.FC = () => {
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
   };
+
+  const mainColor = theme.palette.primary.main;
   
   return (
     <Box
@@ -124,7 +127,7 @@ const LoginPage: React.FC = () => {
         height: '100%',
         width: '100%',
         bgcolor: alpha(theme.palette.primary.main, 0.03),
-        backgroundImage: `radial-gradient(${alpha(theme.palette.primary.main, 0.1)} 1px, transparent 1px)`,
+        backgroundImage: `radial-gradient(${alpha(mainColor, 0.1)} 1px, transparent 1px)`,
         backgroundSize: '20px 20px',
         alignItems: 'center',
         justifyContent: 'center',
@@ -140,7 +143,7 @@ const LoginPage: React.FC = () => {
           left: 0,
           right: 0,
           height: '35%',
-          background: `linear-gradient(to bottom, ${alpha(theme.palette.primary.main, 0.4)}, transparent)`,
+          background: `linear-gradient(to bottom, ${alpha(mainColor, 0.3)}, transparent)`,
           zIndex: 0
         }}
       />
@@ -153,17 +156,18 @@ const LoginPage: React.FC = () => {
           display: 'flex',
           flexDirection: 'column',
           height: isMobile ? '100%' : 'auto',
-          justifyContent: isMobile ? 'center' : 'flex-start'
+          justifyContent: isMobile ? 'center' : 'flex-start',
         }}
       >
         <Fade in={true} timeout={800}>
           <Card 
-            elevation={12} 
+            elevation={8} 
             sx={{ 
-              borderRadius: 3, 
+              borderRadius: 4, 
               overflow: 'hidden',
               backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.8 : 0.9),
-              backdropFilter: 'blur(10px)'
+              backdropFilter: 'blur(10px)',
+              boxShadow: theme.shadows[10]
             }}
           >
             <Box 
@@ -175,7 +179,7 @@ const LoginPage: React.FC = () => {
                 position: 'relative'
               }}
             >
-              <Box 
+              {/* <Box 
                 sx={{ 
                   position: 'absolute', 
                   top: -30, 
@@ -191,13 +195,10 @@ const LoginPage: React.FC = () => {
                   boxShadow: 3
                 }}
               >
-                <BusinessIcon sx={{ fontSize: 32 }} />
-              </Box>
+                <BusinessIcon sx={{ fontSize: 32, color: 'white' }} />
+              </Box> */}
               <Typography variant="h4" fontWeight="bold" sx={{ mt: 3 }}>
-                Biz360 CRM
-              </Typography>
-              <Typography variant="subtitle1" sx={{ mt: 1, opacity: 0.9 }}>
-                ИИ-Ассистент
+                Biz360 ИИ-Ассистент
               </Typography>
             </Box>
             
@@ -318,7 +319,13 @@ const LoginPage: React.FC = () => {
                     fontSize: '1rem',
                     borderRadius: 10,
                     position: 'relative',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    boxShadow: 2,
+                    '&:hover': {
+                      boxShadow: 4,
+                      transform: 'translateY(-2px)',
+                      transition: 'all 0.2s'
+                    }
                   }}
                   onClick={handleLogin}
                   disabled={isLoading}

@@ -1,0 +1,161 @@
+/* src/styles/pwa.css */
+
+/* Основные переменные для viewport */
+:root {
+    --vh: 1vh;
+    --app-height: 100%;
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+  }
+  
+  /* Глобальные стили для PWA */
+  html, body {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: default;
+    overscroll-behavior: none !important;
+  }
+  
+  /* Стили для iOS и мобильных устройств */
+  @media (max-width: 768px) {
+    html, body {
+      position: fixed;
+      width: 100%;
+      height: var(--app-height);
+      height: calc(var(--vh, 1vh) * 100);
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+  
+    /* Учитываем отступы безопасных зон (notch и т.д.) */
+    .app-container {
+      padding-top: var(--safe-area-top);
+      padding-bottom: var(--safe-area-bottom);
+      padding-left: var(--safe-area-left);
+      padding-right: var(--safe-area-right);
+    }
+  
+    /* Обработка скролла в контейнере */
+    .scrollable-content {
+      -webkit-overflow-scrolling: touch;
+      overflow-y: auto;
+      height: calc(100% - var(--safe-area-top) - var(--safe-area-bottom));
+    }
+  
+    /* Общие стили для контейнера приложения */
+    #root {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      height: 100%;
+      max-height: calc(var(--vh, 1vh) * 100);
+    }
+  
+    /* Стили для подавления системных жестов и эффектов */
+    * {
+      -webkit-tap-highlight-color: transparent !important;
+      -webkit-touch-callout: none;
+    }
+  
+    /* Предотвращение масштабирования двойным тапом на iOS Safari */
+    button, a, input, select, textarea {
+      touch-action: manipulation;
+    }
+  
+    /* Предотвращение выделения текста */
+    p, h1, h2, h3, h4, h5, h6, span, div {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+  
+    /* Стили для фиксированного положения AppBar */
+    .MuiAppBar-root {
+      position: fixed;
+      top: var(--safe-area-top);
+      left: 0;
+      right: 0;
+      z-index: 1000;
+    }
+  
+    /* Стили для основного контента с учетом фиксированного AppBar */
+    .app-content {
+      margin-top: calc(64px + var(--safe-area-top)); /* 64px - высота AppBar */
+      height: calc(100% - 64px - var(--safe-area-top) - var(--safe-area-bottom));
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  
+    /* Убираем скролл у body */
+    body::-webkit-scrollbar {
+      display: none;
+    }
+  
+    body {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  
+    /* Плавные переходы при переключении страниц */
+    .page-transition {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+  
+    @keyframes fadeIn {
+      from {
+        opacity: 0.8;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  }
+  
+  /* Стили для кнопок, чтобы они выглядели более нативно на мобильных устройствах */
+  @media (max-width: 768px) {
+    .MuiButton-root {
+      border-radius: 8px;
+      min-height: 42px;
+      font-weight: 500;
+    }
+  
+    .MuiTextField-root, .MuiOutlinedInput-root {
+      border-radius: 8px;
+    }
+  
+    /* Увеличенные отступы для лучшего тапа на сенсорных экранах */
+    .MuiListItem-root {
+      padding-top: 12px;
+      padding-bottom: 12px;
+    }
+  
+    /* Стиль для карточек на мобильных */
+    .MuiCard-root {
+      border-radius: 12px;
+      box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+  
+  /* Стили для режима полного экрана */
+  @media all and (display-mode: standalone) {
+    html, body {
+      height: 100vh;
+      height: calc(var(--vh, 1vh) * 100);
+      width: 100vw;
+      margin: 0;
+      padding: 0;
+    }
+  }

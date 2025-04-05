@@ -81,7 +81,6 @@ export default defineConfig({
           }
         ],
         prefer_related_applications: false,
-        // Настройки обработки жестов
         handle_links: 'preferred'
       },
       workbox: {
@@ -138,7 +137,9 @@ export default defineConfig({
       },
       devOptions: {
         enabled: true,
-        type: 'module'
+        type: 'module',
+        // Добавление настройки для исправления предупреждения
+        navigateFallback: 'index.html'
       }
     })
   ],

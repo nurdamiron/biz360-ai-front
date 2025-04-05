@@ -1,5 +1,7 @@
-// src/App.tsx
-import React, { useEffect } from 'react';
+// Файл: src/App.tsx
+// Обновите импорт ChakraProvider и обертку приложения
+
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
 import theme from './theme';
@@ -20,7 +22,7 @@ function App() {
   const { isLoggedIn } = useAppSelector(state => state.auth);
   
   // Проверяем аутентификацию пользователя при загрузке приложения
-  useEffect(() => {
+  React.useEffect(() => {
     if (isLoggedIn) {
       dispatch(fetchUser());
     }

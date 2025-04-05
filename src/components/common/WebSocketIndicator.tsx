@@ -1,6 +1,6 @@
 // src/components/common/WebSocketIndicator.tsx
-import React from 'react';
-import { Badge, Tooltip, HStack, Text } from '@chakra-ui/react';
+import React, { useEffect, useState } from 'react';
+import { Badge, Tooltip, Box, Typography } from '@mui/material';
 import useWebSocket from '../../hooks/useWebSocket';
 import { WebSocketState } from '../../services/websocket.service';
 
@@ -12,53 +12,51 @@ const WebSocketIndicator: React.FC = () => {
     switch (state) {
       case WebSocketState.OPEN:
         return {
-          colorScheme: 'green',
+          color: 'success',
           text: 'Подключено',
           tooltipText: 'WebSocket соединение активно'
         };
       case WebSocketState.CONNECTING:
         return {
-          colorScheme: 'yellow',
+          color: 'warning',
           text: 'Подключение...',
           tooltipText: 'Устанавливается WebSocket соединение'
         };
       case WebSocketState.CLOSING:
         return {
-          colorScheme: 'orange',
+          color: 'warning',
           text: 'Закрытие...',
           tooltipText: 'Закрывается WebSocket соединение'
         };
       case WebSocketState.CLOSED:
       default:
         return {
-          colorScheme: 'red',
+          color: 'error',
           text: 'Отключено',
           tooltipText: 'WebSocket соединение закрыто или недоступно'
         };
     }
   };
   
-  const { colorScheme, text, tooltipText } = getIndicatorProps();
+  const { color, text, tooltipText } = getIndicatorProps();
   
   return (
     <Tooltip 
-      label={tooltipText} 
+      title={tooltipText} 
       placement="bottom" 
-      hasArrow 
-      openDelay={500}
+      arrow
     >
-      <HStack spacing={1} align="center">
+      <Box display="flex" alignItems="center" sx={{ cursor: 'help' }}>
         <Badge 
-          colorScheme={colorScheme} 
-          variant="solid" 
-          borderRadius="full" 
-          px={2}
-          display="flex"
-          alignItems="center"
+          variant="dot" 
+          color={color as 'success' | 'warning' | 'error' | 'info'} 
+          sx={{ display: 'flex', alignItems: 'center' }}
         >
-          <Text fontSize="xs">{text}</Text>
+          <Typography variant="caption" sx={{ ml: 1, fontWeight: 'medium' }}>
+            {text}
+          </Typography>
         </Badge>
-      </HStack>
+      </Box>
     </Tooltip>
   );
 };

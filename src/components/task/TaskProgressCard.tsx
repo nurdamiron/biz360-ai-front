@@ -1,20 +1,22 @@
+// src/components/task/TaskProgressCard.tsx
 import React from 'react';
-import { 
-  Card, 
-  CardContent, 
-  Typography, 
-  Box, 
-  Chip, 
-  IconButton, 
-  LinearProgress, 
-  Divider, 
-  Grid,
+import {
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Chip,
+  IconButton,
+  LinearProgress,
+  Stack,
   Menu,
   MenuItem,
   ListItemIcon,
   ListItemText,
   Paper,
-  Stack
+  alpha,
+  Tooltip,
+  useTheme
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Task, TaskStatus, TaskPriority, LogType } from '../../types/task.types';
@@ -43,6 +45,7 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const theme = useTheme();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   
   // Получаем последние логи
@@ -146,7 +149,17 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
     task.status === TaskStatus.IN_PROGRESS ? 'warning' : 'primary';
   
   return (
-    <Card variant="outlined" sx={{ width: '100%' }}>
+    <Card 
+      variant="outlined" 
+      sx={{ 
+        width: '100%', 
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          boxShadow: 3
+        }
+      }}
+      onClick={() => navigate(`/tasks/${task.id}`)}
+    >
       <CardContent>
         <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
           <Box>
@@ -160,18 +173,26 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
           </Box>
           
           <Box display="flex">
-            <IconButton 
-              size="small" 
-              onClick={handleViewDetails}
-              aria-label="Просмотреть детали"
-            >
-              <VisibilityIcon />
-            </IconButton>
+            <Tooltip title="Просмотреть детали">
+              <IconButton 
+                size="small" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewDetails();
+                }}
+                aria-label="Просмотреть детали"
+              >
+                <VisibilityIcon />
+              </IconButton>
+            </Tooltip>
             <IconButton
               size="small"
               aria-controls="task-menu"
               aria-haspopup="true"
-              onClick={handleMenuOpen}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMenuOpen(e);
+              }}
               aria-label="Дополнительные действия"
             >
               <MoreVertIcon />
@@ -182,6 +203,7 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
               keepMounted
               open={Boolean(anchorEl)}
               onClose={handleMenuClose}
+              onClick={(e) => e.stopPropagation()}
             >
               <MenuItem onClick={handleViewDetails}>
                 <ListItemIcon>
@@ -220,7 +242,17 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
           </Box>
         </Box>
         
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }} noWrap>
+        <Typography 
+          variant="body2" 
+          color="text.secondary" 
+          sx={{ 
+            mb: 2,
+            display: '-webkit-box',
+            overflow: 'hidden',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 2
+          }}
+        >
           {task.description}
         </Typography>
         
@@ -233,7 +265,11 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
             variant="determinate" 
             value={task.progress} 
             color={progressColor}
-            sx={{ height: 6, borderRadius: 3 }}
+            sx={{ 
+              height: 6, 
+              borderRadius: 3,
+              backgroundColor: alpha(theme.palette[progressColor].main, 0.2)
+            }}
           />
         </Box>
         
@@ -247,7 +283,14 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
                 <Paper 
                   key={log.id}
                   variant="outlined"
-                  sx={{ p: 1.5, borderRadius: 1 }}
+                  sx={{ 
+                    p: 1.5, 
+                    borderRadius: 1,
+                    '&:hover': {
+                      boxShadow: 1
+                    } 
+                  }}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
                     <Box display="flex" alignItems="center">
@@ -260,14 +303,22 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
                       {new Date(log.timestamp).toLocaleTimeString()}
                     </Typography>
                   </Box>
-                  <Typography variant="body2">
+                  <Typography 
+                    variant="body2"
+                    sx={{
+                      display: '-webkit-box',
+                      overflow: 'hidden',
+                      WebkitBoxOrient: 'vertical',
+                      WebkitLineClamp: 2
+                    }}
+                  >
                     {log.message}
                   </Typography>
                   {log.progress !== undefined && (
                     <LinearProgress 
                       variant="determinate" 
                       value={log.progress} 
-                      sx={{ mt: 1, height: 4 }} 
+                      sx={{ mt: 1, height: 4, borderRadius: 2 }} 
                     />
                   )}
                 </Paper>
@@ -275,6 +326,23 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
             </Stack>
           </Box>
         )}
+        
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            mt: 2, 
+            pt: 1, 
+            borderTop: `1px solid ${alpha(theme.palette.divider, 0.4)}` 
+          }}
+        >
+          <Typography variant="caption" color="text.secondary">
+            ID: #{task.id}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Обновлено: {new Date(task.updatedAt).toLocaleDateString()}
+          </Typography>
+        </Box>
       </CardContent>
     </Card>
   );

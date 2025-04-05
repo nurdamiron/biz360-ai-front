@@ -2,16 +2,20 @@
 import React, { useState } from 'react';
 import {
   Box,
-  useColorModeValue,
-  Flex,
-  Text,
-  VStack,
-  HStack,
-  Badge,
+  useTheme,
+  Card,
+  CardContent,
+  Typography,
+  Divider,
   List,
   ListItem,
-  Circle
-} from '@material-ui/react';
+  ListItemText,
+  Chip,
+  Badge,
+  alpha,
+  Tooltip,
+  Paper
+} from '@mui/material';
 
 // Данные для графика
 export interface PieData {
@@ -47,9 +51,7 @@ const PieChart: React.FC<PieChartProps> = ({
   donutThickness = 40,
   colorScheme = ['#3182CE', '#63B3ED', '#4FD1C5', '#F6AD55', '#FC8181', '#B794F4', '#9F7AEA', '#F687B3', '#805AD5']
 }) => {
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const labelColor = useColorModeValue('gray.500', 'gray.400');
+  const theme = useTheme();
   
   // Состояние для выделенного сегмента
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -124,163 +126,187 @@ const PieChart: React.FC<PieChartProps> = ({
       cx="50"
       cy="50"
       r={50 - donutThickness}
-      fill={bgColor}
+      fill={theme.palette.background.paper}
     />
   ) : null;
   
   return (
-    <Box
-      bg={bgColor}
-      borderRadius="lg"
-      borderWidth="1px"
-      borderColor={borderColor}
-      p={4}
-      boxShadow="sm"
-      width="100%"
-    >
-      <Flex justifyContent="space-between" alignItems="baseline" mb={2}>
-        <VStack align="start" spacing={0}>
-          <Text fontWeight="medium" fontSize="md">{title}</Text>
-          {description && (
-            <Text fontSize="xs" color={labelColor}>{description}</Text>
-          )}
-        </VStack>
-        <Flex alignItems="center">
-          <Text fontWeight="bold" fontSize="lg">
+    <Card variant="outlined" sx={{ height: '100%' }}>
+      <CardContent>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              {title}
+            </Typography>
+            {description && (
+              <Typography variant="body2" color="text.secondary">
+                {description}
+              </Typography>
+            )}
+          </Box>
+          <Typography variant="subtitle1" fontWeight="bold">
             {valuePrefix}{total.toLocaleString()}{valueSuffix}
-          </Text>
-        </Flex>
-      </Flex>
-      
-      <Flex 
-        mt={4} 
-        flexDirection={{ base: 'column', md: showLegend ? 'row' : 'column' }}
-        justifyContent="center" 
-        alignItems="center"
-        gap={6}
-      >
-        {/* Диаграмма */}
+          </Typography>
+        </Box>
+        
+        <Divider sx={{ mb: 2 }} />
+        
         <Box 
-          position="relative" 
-          width={typeof size === 'number' ? `${size}px` : size}
-          height={typeof size === 'number' ? `${size}px` : size}
-          flexShrink={0}
+          sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', md: showLegend ? 'row' : 'column' },
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2
+          }}
         >
-          <svg 
-            width="100%" 
-            height="100%" 
-            viewBox="0 0 100 100"
-            style={{ transform: 'rotate(-90deg)' }}
+          {/* Диаграмма */}
+          <Box 
+            sx={{ 
+              position: 'relative', 
+              width: typeof size === 'number' ? `${size}px` : size,
+              height: typeof size === 'number' ? `${size}px` : size,
+              flexShrink: 0
+            }}
           >
-            {pieSegments.map((segment, index) => (
-              <path
-                key={index}
-                d={segment.path}
-                fill={segment.color}
-                stroke={bgColor}
-                strokeWidth="1"
-                onMouseEnter={() => setActiveIndex(index)}
-                onMouseLeave={() => setActiveIndex(null)}
-                style={{
-                  transition: 'all 0.3s ease',
-                  transform: segment.isActive ? 'scale(1.05)' : 'scale(1)',
-                  transformOrigin: '50px 50px'
-                }}
-              />
-            ))}
-            {innerCircle}
-          </svg>
-          
-          {/* Центральный текст для пончика */}
-          {donut && activeIndex !== null && (
-            <Flex
-              position="absolute"
-              top="0"
-              left="0"
-              width="100%"
-              height="100%"
-              justifyContent="center"
-              alignItems="center"
-              flexDirection="column"
-              pointerEvents="none"
-            >
-              <Text fontSize="lg" fontWeight="bold">
-                {segments[activeIndex].percentage.toFixed(1)}%
-              </Text>
-              <Text fontSize="xs" color={labelColor} textAlign="center" noOfLines={2}>
-                {segments[activeIndex].label}
-              </Text>
-            </Flex>
-          )}
-          
-          {/* Метки процентов на диаграмме */}
-          {showPercentages && !donut && (
             <svg 
               width="100%" 
               height="100%" 
               viewBox="0 0 100 100"
-              style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+              style={{ transform: 'rotate(-90deg)' }}
             >
-              {pieSegments.filter(segment => segment.percentage > 5).map((segment, index) => (
-                <text
+              {pieSegments.map((segment, index) => (
+                <path
                   key={index}
-                  x={segment.textPosition.x}
-                  y={segment.textPosition.y}
-                  fill="white"
-                  fontSize="8"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  transform={`rotate(90, ${segment.textPosition.x}, ${segment.textPosition.y})`}
-                >
-                  {segment.percentage.toFixed(1)}%
-                </text>
+                  d={segment.path}
+                  fill={segment.color}
+                  stroke={theme.palette.background.paper}
+                  strokeWidth="1"
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                  style={{
+                    transition: 'all 0.3s ease',
+                    transform: segment.isActive ? 'scale(1.05)' : 'scale(1)',
+                    transformOrigin: '50px 50px'
+                  }}
+                />
               ))}
+              {innerCircle}
             </svg>
+            
+            {/* Центральный текст для пончика */}
+            {donut && activeIndex !== null && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flexDirection: 'column',
+                  pointerEvents: 'none'
+                }}
+              >
+                <Typography variant="h6" fontWeight="bold">
+                  {segments[activeIndex].percentage.toFixed(1)}%
+                </Typography>
+                <Typography variant="caption" color="text.secondary" align="center" noWrap sx={{ maxWidth: '80%' }}>
+                  {segments[activeIndex].label}
+                </Typography>
+              </Box>
+            )}
+            
+            {/* Метки процентов на диаграмме */}
+            {showPercentages && !donut && (
+              <svg 
+                width="100%" 
+                height="100%" 
+                viewBox="0 0 100 100"
+                style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+              >
+                {pieSegments.filter(segment => segment.percentage > 5).map((segment, index) => (
+                  <text
+                    key={index}
+                    x={segment.textPosition.x}
+                    y={segment.textPosition.y}
+                    fill="white"
+                    fontSize="8"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    transform={`rotate(90, ${segment.textPosition.x}, ${segment.textPosition.y})`}
+                  >
+                    {segment.percentage.toFixed(1)}%
+                  </text>
+                ))}
+              </svg>
+            )}
+          </Box>
+          
+          {/* Легенда */}
+          {showLegend && (
+            <List sx={{ width: '100%', maxWidth: { xs: '100%', md: '60%' } }}>
+              {segments.map((segment, index) => (
+                <Tooltip 
+                  key={index}
+                  title={`${segment.label}: ${segment.value.toLocaleString()} (${segment.percentage.toFixed(1)}%)`}
+                  arrow
+                >
+                  <ListItem 
+                    sx={{ 
+                      py: 0.5,
+                      px: 1,
+                      borderRadius: 1,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.action.hover, 0.1)
+                      },
+                      ...(activeIndex === index && {
+                        bgcolor: alpha(theme.palette.action.selected, 0.2)
+                      })
+                    }}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onMouseLeave={() => setActiveIndex(null)}
+                  >
+                    <Box 
+                      component="span" 
+                      sx={{ 
+                        display: 'inline-block', 
+                        width: 12, 
+                        height: 12, 
+                        borderRadius: '50%',
+                        bgcolor: segment.color,
+                        mr: 1.5
+                      }} 
+                    />
+                    <ListItemText 
+                      primary={segment.label} 
+                      primaryTypographyProps={{
+                        variant: 'body2',
+                        noWrap: true,
+                        fontWeight: activeIndex === index ? 'medium' : 'normal'
+                      }}
+                    />
+                    <Chip 
+                      label={`${segment.percentage.toFixed(1)}%`} 
+                      size="small"
+                      variant={activeIndex === index ? "filled" : "outlined"}
+                      color={activeIndex === index ? "primary" : "default"}
+                      sx={{ mr: 1, minWidth: 45 }}
+                    />
+                    <Typography variant="body2" component="span" fontWeight="medium" sx={{ minWidth: 50, textAlign: 'right' }}>
+                      {valuePrefix}{segment.value.toLocaleString()}{valueSuffix}
+                    </Typography>
+                  </ListItem>
+                </Tooltip>
+              ))}
+            </List>
           )}
         </Box>
-        
-        {/* Легенда */}
-        {showLegend && (
-          <List spacing={2} maxW="100%">
-            {segments.map((segment, index) => (
-              <ListItem 
-                key={index}
-                display="flex"
-                alignItems="center"
-                gap={2}
-                onMouseEnter={() => setActiveIndex(index)}
-                onMouseLeave={() => setActiveIndex(null)}
-                cursor="pointer"
-                py={1}
-                px={2}
-                borderRadius="md"
-                bg={activeIndex === index ? useColorModeValue('gray.100', 'gray.700') : 'transparent'}
-                transition="all 0.2s"
-              >
-                <Circle size="12px" bg={segment.color} />
-                <Text 
-                  fontSize="sm" 
-                  fontWeight={activeIndex === index ? 'medium' : 'normal'}
-                  flex="1"
-                  isTruncated
-                >
-                  {segment.label}
-                </Text>
-                <Badge 
-                  colorScheme={activeIndex === index ? 'blue' : 'gray'} 
-                  variant={activeIndex === index ? 'solid' : 'outline'}
-                >
-                  {segment.percentage.toFixed(1)}%
-                </Badge>
-                <Text fontSize="sm" fontWeight="medium" minW="70px" textAlign="right">
-                  {valuePrefix}{segment.value.toLocaleString()}{valueSuffix}
-                </Text>
-              </ListItem>
-            ))}
-          </List>
-        )}
-      </Flex>
-    </Box>
+      </CardContent>
+    </Card>
   );
 };
 

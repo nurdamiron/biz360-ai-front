@@ -1,78 +1,117 @@
 // src/components/layout/Sidebar.tsx
 import React from 'react';
 import { 
-  Box, Flex, VStack, Text, Icon, Divider, 
-  useColorMode, IconButton, Collapse,
-  useDisclosure, BoxProps
-} from '@chakra-ui/react';
+  Box, 
+  Drawer, 
+  List, 
+  ListItem, 
+  ListItemButton, 
+  ListItemIcon, 
+  ListItemText, 
+  Divider, 
+  IconButton, 
+  useTheme, 
+  useMediaQuery,
+  Collapse
+} from '@mui/material';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/redux';
 import { UserRole } from '../../types/user.types';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const DashboardIcon = () => <span>📊</span>;
-const ProjectsIcon = () => <span>📁</span>;
-const TasksIcon = () => <span>📝</span>;
-const CodeIcon = () => <span>💻</span>;
-const AnalyticsIcon = () => <span>📈</span>;
-const SettingsIcon = () => <span>⚙️</span>;
-const MenuIcon = () => <span>≡</span>;
+// Material UI иконки
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import FolderIcon from '@mui/icons-material/Folder';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import CodeIcon from '@mui/icons-material/Code';
+import InsightsIcon from '@mui/icons-material/Insights';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import MenuIcon from '@mui/icons-material/Menu';
 
 // Интерфейс для пункта меню
-interface NavItemProps extends BoxProps {
-  icon: React.ReactNode;
+interface NavItemProps {
+  icon: React.ReactElement;
   to: string;
-  children: React.ReactNode;
+  label: string;
   isActive?: boolean;
+  isCollapsed?: boolean;
+  onClick?: () => void;
 }
 
 // Компонент пункта меню
 const NavItem: React.FC<NavItemProps> = ({ 
   icon, 
-  children, 
+  label, 
   to, 
-  isActive,
-  ...rest 
+  isActive = false,
+  isCollapsed = false,
+  onClick
 }) => {
-  const { colorMode } = useColorMode();
+  const theme = useTheme();
   
   return (
-    <Box
-      as={NavLink}
-      to={to}
-      p={3}
-      borderRadius="md"
-      transition="all 0.2s"
-      fontWeight="medium"
-      bg={isActive ? 'primary.50' : 'transparent'}
-      color={isActive ? 'primary.500' : colorMode === 'light' ? 'gray.700' : 'gray.200'}
-      _hover={{
-        bg: colorMode === 'light' ? 'gray.100' : 'gray.700',
-        color: colorMode === 'light' ? 'gray.900' : 'white',
+    <ListItem 
+      disablePadding 
+      sx={{ 
+        display: 'block',
+        mb: 0.5
       }}
-      width="100%"
-      {...rest}
     >
-      <Flex align="center">
-        <Box mr={3}>
+      <ListItemButton
+        component={NavLink}
+        to={to}
+        onClick={onClick}
+        selected={isActive}
+        sx={{
+          minHeight: 48,
+          justifyContent: isCollapsed ? 'center' : 'initial',
+          px: 2.5,
+          borderRadius: 1,
+          mx: 1,
+          '&.Mui-selected': {
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+            color: theme.palette.primary.main,
+            '& .MuiListItemIcon-root': {
+              color: theme.palette.primary.main,
+            }
+          }
+        }}
+      >
+        <ListItemIcon
+          sx={{
+            minWidth: 0,
+            mr: isCollapsed ? 0 : 3,
+            justifyContent: 'center',
+          }}
+        >
           {icon}
-        </Box>
-        <Text>{children}</Text>
-      </Flex>
-    </Box>
+        </ListItemIcon>
+        <ListItemText 
+          primary={label} 
+          sx={{ 
+            opacity: isCollapsed ? 0 : 1,
+            display: isCollapsed ? 'none' : 'block'
+          }} 
+        />
+      </ListItemButton>
+    </ListItem>
   );
 };
 
+// Константы для drawer
+const DRAWER_WIDTH = 240;
+const COLLAPSED_DRAWER_WIDTH = 64;
+
 // Основной компонент боковой панели
 const Sidebar: React.FC = () => {
-  const { colorMode } = useColorMode();
+  const theme = useTheme();
   const location = useLocation();
   const { user } = useAppSelector(state => state.auth);
-  const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: true });
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
   
-  // Состояние для мобильной версии
-  const mobileMenuDisclosure = useDisclosure();
+  // Определяем ширину для медиа-запросов
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = React.useState(false);
   
   // Проверка активности пункта меню
   const isActive = (path: string) => location.pathname === path;
@@ -94,213 +133,108 @@ const Sidebar: React.FC = () => {
     }
   };
   
-  // Содержимое меню
-  const menuContent = (
-    <VStack spacing={1} align="stretch" width="100%">
-      <NavItem 
-        icon={<DashboardIcon />} 
-        to="/dashboard" 
-        isActive={isActive('/dashboard')}
+  // Обработчик сворачивания/разворачивания бокового меню
+  const handleToggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+  
+  // Обработчик открытия/закрытия мобильного меню
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+  
+  // Закрываем мобильное меню при выборе пункта
+  const handleNavItemClick = () => {
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+  };
+  
+  // Пункты меню
+  const menuItems = [
+    { label: 'Дашборд', icon: <DashboardIcon />, path: '/dashboard', role: UserRole.VIEWER },
+    { label: 'Проекты', icon: <FolderIcon />, path: '/projects', role: UserRole.VIEWER },
+    { label: 'Задачи', icon: <AssignmentIcon />, path: '/tasks', role: UserRole.VIEWER },
+    { label: 'Код', icon: <CodeIcon />, path: '/code', role: UserRole.DEVELOPER },
+    { label: 'Аналитика', icon: <InsightsIcon />, path: '/analytics', role: UserRole.MANAGER },
+    { label: 'Настройки', icon: <SettingsIcon />, path: '/settings', role: UserRole.VIEWER },
+  ];
+  
+  // Содержимое бокового меню
+  const drawerContent = (
+    <Box>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: isCollapsed ? 'center' : 'space-between',
+          padding: theme.spacing(0, 1),
+          ...theme.mixins.toolbar
+        }}
       >
-        Дашборд
-      </NavItem>
-      
-      <NavItem 
-        icon={<ProjectsIcon />} 
-        to="/projects" 
-        isActive={isActive('/projects')}
-      >
-        Проекты
-      </NavItem>
-      
-      <NavItem 
-        icon={<TasksIcon />} 
-        to="/tasks" 
-        isActive={isActive('/tasks')}
-      >
-        Задачи
-      </NavItem>
-      
-      {canAccess(UserRole.DEVELOPER) && (
-        <NavItem 
-          icon={<CodeIcon />} 
-          to="/code" 
-          isActive={isActive('/code')}
-        >
-          Код
-        </NavItem>
-      )}
-      
-      {canAccess(UserRole.MANAGER) && (
-        <NavItem 
-          icon={<AnalyticsIcon />} 
-          to="/analytics" 
-          isActive={isActive('/analytics')}
-        >
-          Аналитика
-        </NavItem>
-      )}
-      
-      <Divider my={2} />
-      
-      <NavItem 
-        icon={<SettingsIcon />} 
-        to="/settings" 
-        isActive={isActive('/settings')}
-      >
-        Настройки
-      </NavItem>
-    </VStack>
+        {!isCollapsed && <Box sx={{ pl: 2 }}></Box>}
+        <IconButton onClick={handleToggleCollapse} sx={{ display: { xs: 'none', md: 'flex' } }}>
+          {isCollapsed ? <MenuIcon /> : <ChevronLeftIcon />}
+        </IconButton>
+      </Box>
+      <Divider />
+      <List sx={{ pt: 1 }}>
+        {menuItems.map((item) => (
+          canAccess(item.role) && (
+            <NavItem 
+              key={item.label} 
+              icon={item.icon} 
+              label={item.label} 
+              to={item.path} 
+              isActive={isActive(item.path)}
+              isCollapsed={isCollapsed}
+              onClick={handleNavItemClick}
+            />
+          )
+        ))}
+      </List>
+    </Box>
   );
   
   return (
     <>
-      {/* Мобильное меню */}
-      <Box
-        display={{ base: 'flex', md: 'none' }}
-        position="fixed"
-        top="16" // Adjust based on your header height
-        left="0"
-        right="0"
-        zIndex="900"
-        bg={colorMode === 'light' ? 'white' : 'gray.800'}
-        p={2}
-        borderBottomWidth="1px"
-        borderColor={colorMode === 'light' ? 'gray.200' : 'gray.700'}
-        justifyContent="center"
-      >
-        <IconButton
-          aria-label="Toggle mobile menu"
-          icon={<MenuIcon />}
-          onClick={mobileMenuDisclosure.onToggle}
-          variant="ghost"
-        />
-      </Box>
-      
-      <Collapse in={mobileMenuDisclosure.isOpen} animateOpacity>
-        <Box
-          display={{ base: 'block', md: 'none' }}
-          position="fixed"
-          top="24" // Adjust based on your header height + toggle button
-          left="0"
-          right="0"
-          zIndex="900"
-          bg={colorMode === 'light' ? 'white' : 'gray.800'}
-          p={4}
-          borderBottomWidth="1px"
-          borderColor={colorMode === 'light' ? 'gray.200' : 'gray.700'}
-          boxShadow="md"
-        >
-          {menuContent}
-        </Box>
-      </Collapse>
-      
       {/* Десктопная боковая панель */}
-      <Box
-        as="nav"
-        position="fixed"
-        top="16" // Adjust based on your header height
-        left="0"
-        h="calc(100vh - 16px)" // Adjust based on your header height
-        w={isOpen ? "240px" : "80px"}
-        bg={colorMode === 'light' ? 'white' : 'gray.800'}
-        borderRightWidth="1px"
-        borderColor={colorMode === 'light' ? 'gray.200' : 'gray.700'}
-        transition="width 0.2s ease"
-        display={{ base: 'none', md: 'block' }}
-        overflowY="auto"
-        zIndex="900"
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          '& .MuiDrawer-paper': {
+            width: isCollapsed ? COLLAPSED_DRAWER_WIDTH : DRAWER_WIDTH,
+            boxSizing: 'border-box',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+            overflowX: 'hidden',
+            borderRight: `1px solid ${theme.palette.divider}`,
+          },
+        }}
+        open
       >
-        <Flex direction="column" height="full" p={4}>
-          <Flex justify="flex-end" mb={4}>
-            <IconButton
-              aria-label="Toggle sidebar"
-              icon={<MenuIcon />}
-              onClick={onToggle}
-              variant="ghost"
-              size="sm"
-            />
-          </Flex>
-          
-          {isOpen ? (
-            menuContent
-          ) : (
-            <VStack spacing={4} align="center">
-              <NavItem 
-                icon={<DashboardIcon />} 
-                to="/dashboard" 
-                isActive={isActive('/dashboard')}
-                display="flex"
-                justifyContent="center"
-                p={2}
-              >
-                {isOpen ? 'Дашборд' : ''}
-              </NavItem>
-              
-              <NavItem 
-                icon={<ProjectsIcon />} 
-                to="/projects" 
-                isActive={isActive('/projects')}
-                display="flex"
-                justifyContent="center"
-                p={2}
-              >
-                {isOpen ? 'Проекты' : ''}
-              </NavItem>
-              
-              <NavItem 
-                icon={<TasksIcon />} 
-                to="/tasks" 
-                isActive={isActive('/tasks')}
-                display="flex"
-                justifyContent="center"
-                p={2}
-              >
-                {isOpen ? 'Задачи' : ''}
-              </NavItem>
-              
-              {canAccess(UserRole.DEVELOPER) && (
-                <NavItem 
-                  icon={<CodeIcon />} 
-                  to="/code" 
-                  isActive={isActive('/code')}
-                  display="flex"
-                  justifyContent="center"
-                  p={2}
-                >
-                  {isOpen ? 'Код' : ''}
-                </NavItem>
-              )}
-              
-              {canAccess(UserRole.MANAGER) && (
-                <NavItem 
-                  icon={<AnalyticsIcon />} 
-                  to="/analytics" 
-                  isActive={isActive('/analytics')}
-                  display="flex"
-                  justifyContent="center"
-                  p={2}
-                >
-                  {isOpen ? 'Аналитика' : ''}
-                </NavItem>
-              )}
-              
-              <Divider my={2} />
-              
-              <NavItem 
-                icon={<SettingsIcon />} 
-                to="/settings" 
-                isActive={isActive('/settings')}
-                display="flex"
-                justifyContent="center"
-                p={2}
-              >
-                {isOpen ? 'Настройки' : ''}
-              </NavItem>
-            </VStack>
-          )}
-        </Flex>
-      </Box>
+        {drawerContent}
+      </Drawer>
+      
+      {/* Мобильная боковая панель */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: DRAWER_WIDTH,
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        {drawerContent}
+      </Drawer>
     </>
   );
 };

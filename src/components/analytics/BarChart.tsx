@@ -1,3 +1,4 @@
+// src/components/analytics/BarChart.tsx
 import React, { useState } from 'react';
 import {
   Card,
@@ -6,7 +7,9 @@ import {
   Box,
   useTheme,
   alpha,
-  Tooltip as MuiTooltip
+  Tooltip as MuiTooltip,
+  Divider,
+  Paper
 } from '@mui/material';
 
 // Интерфейс для данных диаграммы
@@ -110,9 +113,14 @@ const BarChart: React.FC<BarChartProps> = ({
               width={size}
               height={barSize}
               fill={isActive ? alpha(itemColor, 0.8) : itemColor}
+              rx={4} // Скругление углов
+              ry={4}
               onMouseEnter={() => setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(null)}
-              style={{ transition: 'all 0.3s ease' }}
+              style={{ 
+                transition: 'all 0.3s ease',
+                cursor: 'pointer'
+              }}
             />
             
             {showLabels && (
@@ -123,6 +131,10 @@ const BarChart: React.FC<BarChartProps> = ({
                 dominantBaseline="middle"
                 fontSize={12}
                 fill={theme.palette.text.primary}
+                style={{ 
+                  userSelect: 'none',
+                  pointerEvents: 'none'
+                }}
               >
                 {item.label}
               </text>
@@ -135,6 +147,11 @@ const BarChart: React.FC<BarChartProps> = ({
                 dominantBaseline="middle"
                 fontSize={12}
                 fill={theme.palette.text.primary}
+                style={{ 
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                  fontWeight: isActive ? 'bold' : 'normal' 
+                }}
               >
                 {valuePrefix}{item.value.toLocaleString()}{valueSuffix}
               </text>
@@ -152,9 +169,14 @@ const BarChart: React.FC<BarChartProps> = ({
               width={barSize}
               height={size}
               fill={isActive ? alpha(itemColor, 0.8) : itemColor}
+              rx={4} // Скругление углов
+              ry={4}
               onMouseEnter={() => setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(null)}
-              style={{ transition: 'all 0.3s ease' }}
+              style={{ 
+                transition: 'all 0.3s ease',
+                cursor: 'pointer'
+              }}
             />
             
             {showLabels && (
@@ -168,7 +190,11 @@ const BarChart: React.FC<BarChartProps> = ({
                   maxWidth: barSize,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                  transform: item.label.length > 10 ? 'rotate(-45deg)' : 'none',
+                  transformOrigin: `${x + barSize / 2}px ${chartHeight + 15}px`
                 }}
               >
                 {item.label.length > 10 ? item.label.substring(0, 10) + '...' : item.label}
@@ -182,6 +208,11 @@ const BarChart: React.FC<BarChartProps> = ({
                 textAnchor="middle"
                 fontSize={12}
                 fill={theme.palette.text.primary}
+                style={{ 
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                  fontWeight: isActive ? 'bold' : 'normal' 
+                }}
               >
                 {valuePrefix}{item.value.toLocaleString()}{valueSuffix}
               </text>
@@ -222,6 +253,7 @@ const BarChart: React.FC<BarChartProps> = ({
             dominantBaseline="middle"
             fontSize={11}
             fill={theme.palette.text.secondary}
+            style={{ userSelect: 'none' }}
           >
             {valuePrefix}{Math.round(value)}{valueSuffix}
           </text>
@@ -261,6 +293,7 @@ const BarChart: React.FC<BarChartProps> = ({
             textAnchor="middle"
             fontSize={11}
             fill={theme.palette.text.secondary}
+            style={{ userSelect: 'none' }}
           >
             {valuePrefix}{Math.round(value)}{valueSuffix}
           </text>
@@ -285,11 +318,20 @@ const BarChart: React.FC<BarChartProps> = ({
       arrow
       open={activeIndex !== null}
     >
-      <Card variant="outlined">
+      <Card 
+        variant="outlined" 
+        sx={{ 
+          height: '100%',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            boxShadow: 2
+          }
+        }}
+      >
         <CardContent>
-          <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={2}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Box>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" component="div">
                 {title}
               </Typography>
               
@@ -301,21 +343,33 @@ const BarChart: React.FC<BarChartProps> = ({
             </Box>
             
             {showTotal && (
-              <Box display="flex" alignItems="center">
-                <Typography variant="h6" fontWeight="bold">
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  px: 2, 
+                  py: 0.5, 
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  borderRadius: 10
+                }}
+              >
+                <Typography variant="h6" fontWeight="bold" color="primary.main">
                   {valuePrefix}{total.toLocaleString()}{valueSuffix}
                 </Typography>
-              </Box>
+              </Paper>
             )}
           </Box>
           
+          <Divider sx={{ mb: 2 }} />
+          
           <Box 
             sx={{ 
-              height: height, 
+              height, 
               width: '100%', 
               position: 'relative', 
-              mt: 2,
-              overflow: 'visible'
+              overflow: 'visible',
+              '& text': {
+                fontFamily: theme.typography.fontFamily
+              }
             }}
           >
             <svg

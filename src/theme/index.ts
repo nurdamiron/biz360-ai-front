@@ -1,77 +1,141 @@
-import { createTheme, PaletteMode } from '@mui/material';
-import { ruRU } from '@mui/material/locale';
+// src/theme/index.ts
+import { PaletteMode, ThemeOptions } from '@mui/material';
 
-// Цветовая палитра для светлой и тёмной темы
-const getDesignTokens = (mode: PaletteMode) => ({
+// Определение токенов дизайна для светлой и темной темы
+export const getDesignTokens = (mode: PaletteMode): ThemeOptions => ({
   palette: {
     mode,
-    primary: {
-      main: '#1976d2',
-      light: '#42a5f5',
-      dark: '#1565c0',
-      contrastText: '#ffffff',
-    },
-    secondary: {
-      main: '#9c27b0',
-      light: '#ba68c8',
-      dark: '#7b1fa2',
-      contrastText: '#ffffff',
-    },
-    success: {
-      main: '#2e7d32',
-      light: '#4caf50',
-      dark: '#1b5e20',
-    },
-    warning: {
-      main: '#ed6c02',
-      light: '#ff9800',
-      dark: '#e65100',
-    },
-    error: {
-      main: '#d32f2f',
-      light: '#ef5350',
-      dark: '#c62828',
-    },
-    background: {
-      default: mode === 'light' ? '#f5f5f5' : '#121212',
-      paper: mode === 'light' ? '#ffffff' : '#1e1e1e',
-    },
-    text: {
-      primary: mode === 'light' ? 'rgba(0, 0, 0, 0.87)' : 'rgba(255, 255, 255, 0.87)',
-      secondary: mode === 'light' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.6)',
-    },
+    ...(mode === 'light'
+      ? {
+          // Светлая тема
+          primary: {
+            main: '#0085FF',
+            light: '#4BA9FF',
+            dark: '#0061B8',
+            contrastText: '#FFFFFF',
+          },
+          secondary: {
+            main: '#9966FF',
+            light: '#B28DFF',
+            dark: '#7A52CC',
+            contrastText: '#FFFFFF',
+          },
+          error: {
+            main: '#E53E3E',
+            light: '#FC8181',
+            dark: '#C53030',
+          },
+          warning: {
+            main: '#DD6B20',
+            light: '#F6AD55',
+            dark: '#C05621',
+          },
+          info: {
+            main: '#3182CE',
+            light: '#63B3ED',
+            dark: '#2C5282',
+          },
+          success: {
+            main: '#38A169',
+            light: '#68D391',
+            dark: '#276749',
+          },
+          background: {
+            default: '#F7FAFC',
+            paper: '#FFFFFF',
+          },
+          text: {
+            primary: 'rgba(0, 0, 0, 0.87)',
+            secondary: 'rgba(0, 0, 0, 0.6)',
+          },
+          divider: 'rgba(0, 0, 0, 0.12)',
+        }
+      : {
+          // Темная тема
+          primary: {
+            main: '#339EFF',
+            light: '#66B7FF',
+            dark: '#006ACC',
+            contrastText: '#FFFFFF',
+          },
+          secondary: {
+            main: '#AD85FF',
+            light: '#C2A3FF',
+            dark: '#7A52CC',
+            contrastText: '#FFFFFF',
+          },
+          error: {
+            main: '#FC8181',
+            light: '#FEB2B2',
+            dark: '#C53030',
+          },
+          warning: {
+            main: '#F6AD55',
+            light: '#FBD38D',
+            dark: '#C05621',
+          },
+          info: {
+            main: '#63B3ED',
+            light: '#90CDF4',
+            dark: '#2C5282',
+          },
+          success: {
+            main: '#68D391',
+            light: '#9AE6B4',
+            dark: '#276749',
+          },
+          background: {
+            default: '#1A202C',
+            paper: '#2D3748',
+          },
+          text: {
+            primary: 'rgba(255, 255, 255, 0.87)',
+            secondary: 'rgba(255, 255, 255, 0.6)',
+          },
+          divider: 'rgba(255, 255, 255, 0.12)',
+        }),
   },
   shape: {
     borderRadius: 8,
   },
   typography: {
     fontFamily: [
+      'Inter',
       'Roboto',
+      '"Helvetica Neue"',
       'Arial',
       'sans-serif',
     ].join(','),
     h1: {
-      fontSize: '2rem',
-      fontWeight: 500,
+      fontSize: '2.5rem',
+      fontWeight: 600,
     },
     h2: {
-      fontSize: '1.75rem',
-      fontWeight: 500,
+      fontSize: '2rem',
+      fontWeight: 600,
     },
     h3: {
-      fontSize: '1.5rem',
-      fontWeight: 500,
+      fontSize: '1.75rem',
+      fontWeight: 600,
     },
     h4: {
-      fontSize: '1.25rem',
-      fontWeight: 500,
+      fontSize: '1.5rem',
+      fontWeight: 600,
     },
     h5: {
-      fontSize: '1.1rem',
-      fontWeight: 500,
+      fontSize: '1.25rem',
+      fontWeight: 600,
     },
     h6: {
       fontSize: '1rem',
+      fontWeight: 600,
+    },
+    subtitle1: {
+      fontSize: '1rem',
+      fontWeight: 500,
+    },
+    button: {
+      textTransform: 'none',
       fontWeight: 500,
     },
   },
@@ -79,39 +143,117 @@ const getDesignTokens = (mode: PaletteMode) => ({
     MuiButton: {
       styleOverrides: {
         root: {
+          borderRadius: 8,
+          padding: '8px 16px',
           textTransform: 'none',
+          fontWeight: 500,
+        },
+        contained: {
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+          },
+        },
+        outlined: {
+          borderWidth: 1,
         },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
-          boxShadow: mode === 'light' 
-            ? '0 2px 8px rgba(0,0,0,0.08)' 
-            : '0 2px 8px rgba(0,0,0,0.4)',
+          borderRadius: 12,
+          overflow: 'hidden',
+          ...(mode === 'light'
+            ? { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)' }
+            : { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.2)' }),
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          border: '0',
+          ...(mode === 'light'
+            ? { boxShadow: '0px 0px 15px rgba(0, 0, 0, 0.05)' }
+            : { boxShadow: '0px 0px 15px rgba(0, 0, 0, 0.2)' }),
         },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          boxShadow: mode === 'light' 
-            ? '0 2px 4px rgba(0,0,0,0.05)' 
-            : '0 2px 4px rgba(0,0,0,0.4)',
+          boxShadow: '0px 1px 5px rgba(0, 0, 0, 0.08)',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+        },
+        outlined: {
+          borderWidth: 1,
+          ...(mode === 'light'
+            ? { borderColor: 'rgba(0, 0, 0, 0.12)' }
+            : { borderColor: 'rgba(255, 255, 255, 0.12)' }),
+        },
+      },
+    },
+    MuiListItem: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          borderRadius: 6,
+          padding: '8px 12px',
+          fontSize: '0.75rem',
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 16,
+        },
+      },
+    },
+    MuiDivider: {
+      styleOverrides: {
+        root: {
+          ...(mode === 'light'
+            ? { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
+            : { backgroundColor: 'rgba(255, 255, 255, 0.08)' }),
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          borderRadius: 6,
+        },
+      },
+    },
+    MuiInputBase: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
         },
       },
     },
   },
 });
 
-// Функция создания темы с учетом режима
-export const createAppTheme = (mode: PaletteMode) => {
-  return createTheme(
-    getDesignTokens(mode),
-    ruRU // Русская локализация для Material UI компонентов
-  );
-};
-
-// Экспорт функции создания темы по умолчанию
-export default createAppTheme;
+export default getDesignTokens;

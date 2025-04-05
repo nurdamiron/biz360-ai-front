@@ -1,33 +1,30 @@
-// src/pages/auth/LoginPage.tsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
+  Card,
+  CardContent,
   Container,
   FormControl,
-  FormLabel,
-  Heading,
-  Input,
-  VStack,
-  Text,
-  useColorModeValue,
-  FormErrorMessage,
-  Alert,
-  AlertIcon,
-  InputGroup,
-  InputRightElement,
+  FormHelperText,
   IconButton,
-  Flex,
+  InputAdornment,
+  InputLabel,
+  OutlinedInput,
+  Paper,
   Select,
-} from '@chakra-ui/react';
-import { useNavigate } from 'react-router-dom';
+  Typography,
+  MenuItem,
+  Alert,
+  useTheme,
+  SelectChangeEvent
+} from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { login, clearError } from '../../store/slices/authSlice';
 import { Environment, getCurrentEnvironment, setEnvironment } from '../../config/api.config';
-
-// Иконка для показа/скрытия пароля
-const ViewIcon = () => <span>👁️</span>;
-const HideIcon = () => <span>🔒</span>;
+import { ColorModeContext } from '../../App';
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -42,10 +39,8 @@ const LoginPage: React.FC = () => {
   const { isLoggedIn, isLoading, error } = useAppSelector(state => state.auth);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  
-  // Цвета
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const theme = useTheme();
+  const colorMode = React.useContext(ColorModeContext);
   
   // Перенаправление, если пользователь уже вошел
   useEffect(() => {
@@ -94,110 +89,158 @@ const LoginPage: React.FC = () => {
   };
   
   // Обработчик изменения окружения
-  const handleEnvironmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleEnvironmentChange = (e: SelectChangeEvent<string>) => {
     const newEnv = e.target.value as Environment;
     setCurrentEnvironment(newEnv);
     setEnvironment(newEnv);
   };
   
+  // Переключение видимости пароля
+  const handleClickShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+  
   return (
-    <Container maxW="md" py={12}>
-      <VStack
-        spacing={8}
-        p={8}
-        borderWidth="1px"
-        borderRadius="lg"
-        borderColor={borderColor}
-        bg={bgColor}
-        boxShadow="lg"
-      >
-        <Heading size="lg">Вход в Biz360 CRM</Heading>
-        
-        {error && (
-          <Alert status="error" borderRadius="md">
-            <AlertIcon />
-            {error}
-          </Alert>
-        )}
-        
-        <VStack spacing={4} width="100%">
-          <FormControl isInvalid={!!formErrors.username}>
-            <FormLabel>Имя пользователя</FormLabel>
-            <Input
-              type="text"
-              value={username}
-              onChange={(e) => {
-                setUsername(e.target.value);
-                dispatch(clearError());
-                setFormErrors({...formErrors, username: ''});
-              }}
-              onKeyPress={handleKeyPress}
-            />
-            <FormErrorMessage>{formErrors.username}</FormErrorMessage>
-          </FormControl>
-          
-          <FormControl isInvalid={!!formErrors.password}>
-            <FormLabel>Пароль</FormLabel>
-            <InputGroup>
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  dispatch(clearError());
-                  setFormErrors({...formErrors, password: ''});
-                }}
-                onKeyPress={handleKeyPress}
-              />
-              <InputRightElement>
-                <IconButton
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  icon={showPassword ? <HideIcon /> : <ViewIcon />}
-                  onClick={() => setShowPassword(!showPassword)}
-                  variant="ghost"
-                  size="sm"
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 2
+      }}
+    >
+      <Container maxWidth="sm">
+        <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 3 }}>
+          <CardContent sx={{ p: 4 }}>
+            <Box sx={{ mb: 3, textAlign: 'center' }}>
+              <Typography variant="h4" component="h1" gutterBottom color="primary.main" fontWeight="bold">
+                Biz360 CRM
+              </Typography>
+              <Typography variant="subtitle1" sx={{ mb: 3 }}>
+                Вход в систему
+              </Typography>
+              
+              {error && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {error}
+                </Alert>
+              )}
+            </Box>
+            
+            <Box component="form" noValidate sx={{ mt: 1 }}>
+              <FormControl 
+                fullWidth 
+                margin="normal" 
+                variant="outlined" 
+                error={!!formErrors.username}
+              >
+                <InputLabel htmlFor="username">Имя пользователя</InputLabel>
+                <OutlinedInput
+                  id="username"
+                  label="Имя пользователя"
+                  value={username}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    dispatch(clearError());
+                    setFormErrors({...formErrors, username: ''});
+                  }}
+                  onKeyPress={handleKeyPress}
                 />
-              </InputRightElement>
-            </InputGroup>
-            <FormErrorMessage>{formErrors.password}</FormErrorMessage>
-          </FormControl>
-          
-          <FormControl>
-            <FormLabel>Сервер</FormLabel>
-            <Select
-              value={environment}
-              onChange={handleEnvironmentChange}
-            >
-              <option value={Environment.LOCAL}>Локальный</option>
-              <option value={Environment.PRODUCTION}>Промышленный</option>
-            </Select>
-          </FormControl>
-          
-          <Button
-            colorScheme="blue"
-            width="100%"
-            mt={4}
-            onClick={handleLogin}
-            isLoading={isLoading}
-            loadingText="Вход..."
-          >
-            Войти
-          </Button>
-        </VStack>
-        
-        <Box width="100%">
-          <Text fontSize="sm" textAlign="center" color="gray.500">
-            Демо-версия ИИ-ассистента для разработчика Biz360 CRM
-          </Text>
-        </Box>
-      </VStack>
-      
-      <Flex mt={4} justifyContent="center">
-        <Text fontSize="sm" color="gray.500">
-          Для тестового доступа используйте: admin / admin123
-        </Text>
-      </Flex>
-    </Container>
+                {formErrors.username && (
+                  <FormHelperText error>{formErrors.username}</FormHelperText>
+                )}
+              </FormControl>
+              
+              <FormControl 
+                fullWidth 
+                margin="normal" 
+                variant="outlined" 
+                error={!!formErrors.password}
+              >
+                <InputLabel htmlFor="password">Пароль</InputLabel>
+                <OutlinedInput
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    dispatch(clearError());
+                    setFormErrors({...formErrors, password: ''});
+                  }}
+                  onKeyPress={handleKeyPress}
+                  endAdornment={
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={handleClickShowPassword}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  }
+                  label="Пароль"
+                />
+                {formErrors.password && (
+                  <FormHelperText error>{formErrors.password}</FormHelperText>
+                )}
+              </FormControl>
+              
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="environment-label">Сервер</InputLabel>
+                <Select
+                  labelId="environment-label"
+                  id="environment"
+                  value={environment}
+                  label="Сервер"
+                  onChange={handleEnvironmentChange}
+                >
+                  <MenuItem value={Environment.LOCAL}>Локальный</MenuItem>
+                  <MenuItem value={Environment.PRODUCTION}>Промышленный</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <Button
+                type="button"
+                fullWidth
+                variant="contained"
+                color="primary"
+                size="large"
+                sx={{ mt: 3, mb: 2 }}
+                onClick={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Вход...' : 'Войти'}
+              </Button>
+              
+              <Box sx={{ mt: 3, textAlign: 'center' }}>
+                <Typography variant="caption" color="text.secondary">
+                  Демо-версия ИИ-ассистента для разработчика Biz360 CRM
+                </Typography>
+              </Box>
+              
+              <Box sx={{ mt: 2, textAlign: 'center', py: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Для тестового доступа используйте: admin / admin123
+                </Typography>
+              </Box>
+              
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <IconButton onClick={colorMode.toggleColorMode} color="inherit">
+                  {theme.palette.mode === 'dark' ? <Visibility /> : <VisibilityOff />}
+                </IconButton>
+                <Typography variant="caption" sx={{ mt: 1 }}>
+                  {theme.palette.mode === 'dark' ? 'Включить светлую тему' : 'Включить темную тему'}
+                </Typography>
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
   );
 };
 

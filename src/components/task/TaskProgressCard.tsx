@@ -1,22 +1,36 @@
-// src/components/task/TaskProgressCard.tsx
 import React from 'react';
 import { 
-  Box, Flex, Text, Progress, Badge, IconButton, 
-  VStack, HStack, useColorModeValue, Tooltip,
-  Menu, MenuButton, MenuList, MenuItem
-} from '@chakra-ui/react';
+  Card, 
+  CardContent, 
+  Typography, 
+  Box, 
+  Chip, 
+  IconButton, 
+  LinearProgress, 
+  Divider, 
+  Grid,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Paper,
+  Stack
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Task, TaskStatus, TaskPriority, LogType } from '../../types/task.types';
-import { processTask } from '../../store/slices/tasksSlice';
 import { useAppDispatch } from '../../hooks/redux';
+import { processTask } from '../../store/slices/tasksSlice';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const PlayIcon = () => <span>▶️</span>;
-const PauseIcon = () => <span>⏸️</span>;
-const StopIcon = () => <span>⏹️</span>;
-const ViewIcon = () => <span>👁️</span>;
-const MoreIcon = () => <span>⋮</span>;
+// Импорт иконок
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
+import StopIcon from '@mui/icons-material/Stop';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import InfoIcon from '@mui/icons-material/Info';
+import ErrorIcon from '@mui/icons-material/Error';
+import WarningIcon from '@mui/icons-material/Warning';
+import UpdateIcon from '@mui/icons-material/Update';
 
 interface TaskProgressCardProps {
   task: Task;
@@ -29,71 +43,91 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   
   // Получаем последние логи
   const recentLogs = task.logs?.slice(-3).reverse() || [];
   
-  // Преобразование статуса в Badge
-  const getStatusBadge = (status: TaskStatus) => {
+  // Преобразование статуса в Chip
+  const getStatusChip = (status: TaskStatus) => {
     const statusMap = {
-      [TaskStatus.NEW]: { color: 'gray', text: 'Новая' },
-      [TaskStatus.PENDING]: { color: 'blue', text: 'Ожидание' },
-      [TaskStatus.IN_PROGRESS]: { color: 'yellow', text: 'В процессе' },
-      [TaskStatus.RESOLVED]: { color: 'teal', text: 'Решена' },
-      [TaskStatus.COMPLETED]: { color: 'green', text: 'Завершена' },
-      [TaskStatus.FAILED]: { color: 'red', text: 'Ошибка' },
-      [TaskStatus.CANCELED]: { color: 'orange', text: 'Отменена' },
+      [TaskStatus.NEW]: { color: 'default', text: 'Новая' },
+      [TaskStatus.PENDING]: { color: 'primary', text: 'Ожидание' },
+      [TaskStatus.IN_PROGRESS]: { color: 'warning', text: 'В процессе' },
+      [TaskStatus.RESOLVED]: { color: 'info', text: 'Решена' },
+      [TaskStatus.COMPLETED]: { color: 'success', text: 'Завершена' },
+      [TaskStatus.FAILED]: { color: 'error', text: 'Ошибка' },
+      [TaskStatus.CANCELED]: { color: 'default', text: 'Отменена' },
     };
     
-    const { color, text } = statusMap[status] || { color: 'gray', text: status };
+    const { color, text } = statusMap[status] || { color: 'default', text: status };
     
     return (
-      <Badge colorScheme={color} borderRadius="full" px={2}>
-        {text}
-      </Badge>
+      <Chip 
+        label={text} 
+        color={color as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
+        size="small"
+      />
     );
   };
   
-  // Преобразование приоритета в Badge
-  const getPriorityBadge = (priority: TaskPriority) => {
+  // Преобразование приоритета в Chip
+  const getPriorityChip = (priority: TaskPriority) => {
     const priorityMap = {
-      [TaskPriority.LOW]: { color: 'gray', text: 'Низкий' },
-      [TaskPriority.MEDIUM]: { color: 'blue', text: 'Средний' },
-      [TaskPriority.HIGH]: { color: 'orange', text: 'Высокий' },
-      [TaskPriority.CRITICAL]: { color: 'red', text: 'Критический' },
+      [TaskPriority.LOW]: { color: 'default', text: 'Низкий' },
+      [TaskPriority.MEDIUM]: { color: 'info', text: 'Средний' },
+      [TaskPriority.HIGH]: { color: 'warning', text: 'Высокий' },
+      [TaskPriority.CRITICAL]: { color: 'error', text: 'Критический' },
     };
     
-    const { color, text } = priorityMap[priority] || { color: 'gray', text: priority };
+    const { color, text } = priorityMap[priority] || { color: 'default', text: priority };
     
     return (
-      <Badge colorScheme={color} variant="outline" borderRadius="full" px={2}>
-        {text}
-      </Badge>
+      <Chip 
+        label={text} 
+        color={color as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
+        size="small"
+        variant="outlined"
+      />
     );
   };
   
-  // Преобразование типа лога в цвет
-  const getLogColor = (type: LogType) => {
-    const logColorMap = {
-      [LogType.INFO]: 'blue.500',
-      [LogType.ERROR]: 'red.500',
-      [LogType.WARNING]: 'orange.500',
-      [LogType.PROGRESS]: 'green.500',
-    };
-    
-    return logColorMap[type] || 'gray.500';
+  // Получение иконки для типа лога
+  const getLogIcon = (type: LogType) => {
+    switch (type) {
+      case LogType.INFO:
+        return <InfoIcon fontSize="small" color="info" />;
+      case LogType.ERROR:
+        return <ErrorIcon fontSize="small" color="error" />;
+      case LogType.WARNING:
+        return <WarningIcon fontSize="small" color="warning" />;
+      case LogType.PROGRESS:
+        return <UpdateIcon fontSize="small" color="success" />;
+      default:
+        return <InfoIcon fontSize="small" />;
+    }
+  };
+  
+  // Обработчик открытия меню
+  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  
+  // Обработчик закрытия меню
+  const handleMenuClose = () => {
+    setAnchorEl(null);
   };
   
   // Обработчик для перехода к детальной странице задачи
   const handleViewDetails = () => {
     navigate(`/tasks/${task.id}`);
+    handleMenuClose();
   };
   
   // Обработчик для запуска обработки задачи
   const handleProcessTask = () => {
     dispatch(processTask(task.id));
+    handleMenuClose();
   };
   
   // Определяем, можно ли запустить задачу
@@ -105,128 +139,144 @@ const TaskProgressCard: React.FC<TaskProgressCardProps> = ({
   // Определяем, можно ли остановить задачу
   const canStop = task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.PENDING;
   
+  // Определяем цвет индикатора прогресса
+  const progressColor = 
+    task.status === TaskStatus.FAILED ? 'error' :
+    task.status === TaskStatus.COMPLETED ? 'success' :
+    task.status === TaskStatus.IN_PROGRESS ? 'warning' : 'primary';
+  
   return (
-    <Box
-      p={4}
-      borderWidth="1px"
-      borderRadius="lg"
-      borderColor={borderColor}
-      bg={cardBg}
-      boxShadow="sm"
-      transition="all 0.2s"
-      _hover={{ boxShadow: 'md' }}
-      width="100%"
-    >
-      <Flex justifyContent="space-between" alignItems="flex-start" mb={2}>
-        <VStack align="start" spacing={1}>
-          <Text fontWeight="bold" fontSize="lg">{task.title}</Text>
-          <HStack spacing={2}>
-            {getStatusBadge(task.status)}
-            {getPriorityBadge(task.priority)}
-          </HStack>
-        </VStack>
-        
-        <HStack>
-          <Tooltip label="Просмотреть детали">
-            <IconButton
-              aria-label="View details"
-              icon={<ViewIcon />}
-              size="sm"
-              variant="ghost"
-              onClick={handleViewDetails}
-            />
-          </Tooltip>
+    <Card variant="outlined" sx={{ width: '100%' }}>
+      <CardContent>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              {task.title}
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              {getStatusChip(task.status)}
+              {getPriorityChip(task.priority)}
+            </Stack>
+          </Box>
           
-          <Menu>
-            <MenuButton
-              as={IconButton}
-              aria-label="More options"
-              icon={<MoreIcon />}
-              size="sm"
-              variant="ghost"
-            />
-            <MenuList>
-              {canProcess && (
-                <MenuItem
-                  icon={<PlayIcon />}
-                  onClick={handleProcessTask}
-                >
-                  Запустить обработку
-                </MenuItem>
-              )}
-              {canPause && (
-                <MenuItem
-                  icon={<PauseIcon />}
-                >
-                  Приостановить
-                </MenuItem>
-              )}
-              {canStop && (
-                <MenuItem
-                  icon={<StopIcon />}
-                >
-                  Остановить
-                </MenuItem>
-              )}
+          <Box display="flex">
+            <IconButton 
+              size="small" 
+              onClick={handleViewDetails}
+              aria-label="Просмотреть детали"
+            >
+              <VisibilityIcon />
+            </IconButton>
+            <IconButton
+              size="small"
+              aria-controls="task-menu"
+              aria-haspopup="true"
+              onClick={handleMenuOpen}
+              aria-label="Дополнительные действия"
+            >
+              <MoreVertIcon />
+            </IconButton>
+            <Menu
+              id="task-menu"
+              anchorEl={anchorEl}
+              keepMounted
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+            >
               <MenuItem onClick={handleViewDetails}>
-                Подробная информация
+                <ListItemIcon>
+                  <VisibilityIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Подробнее" />
               </MenuItem>
-            </MenuList>
-          </Menu>
-        </HStack>
-      </Flex>
-      
-      <Text fontSize="sm" noOfLines={2} mb={3} color="gray.500">
-        {task.description}
-      </Text>
-      
-      <VStack spacing={2} align="stretch">
-        <Flex justifyContent="space-between" alignItems="center">
-          <Text fontSize="sm" fontWeight="medium">
-            Прогресс:
-          </Text>
-          <Text fontSize="sm">
-            {task.progress}%
-          </Text>
-        </Flex>
+              
+              {canProcess && (
+                <MenuItem onClick={handleProcessTask}>
+                  <ListItemIcon>
+                    <PlayArrowIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Запустить обработку" />
+                </MenuItem>
+              )}
+              
+              {canPause && (
+                <MenuItem onClick={handleMenuClose}>
+                  <ListItemIcon>
+                    <PauseIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Приостановить" />
+                </MenuItem>
+              )}
+              
+              {canStop && (
+                <MenuItem onClick={handleMenuClose}>
+                  <ListItemIcon>
+                    <StopIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Остановить" />
+                </MenuItem>
+              )}
+            </Menu>
+          </Box>
+        </Box>
         
-        <Progress 
-          value={task.progress} 
-          size="sm" 
-          colorScheme={task.status === TaskStatus.FAILED ? 'red' : 'blue'} 
-          borderRadius="full"
-        />
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }} noWrap>
+          {task.description}
+        </Typography>
+        
+        <Box mb={2}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+            <Typography variant="body2">Прогресс:</Typography>
+            <Typography variant="body2">{task.progress}%</Typography>
+          </Box>
+          <LinearProgress 
+            variant="determinate" 
+            value={task.progress} 
+            color={progressColor}
+            sx={{ height: 6, borderRadius: 3 }}
+          />
+        </Box>
         
         {showDetailedLogs && recentLogs.length > 0 && (
-          <Box mt={3}>
-            <Text fontSize="sm" fontWeight="medium" mb={1}>
+          <Box mt={2}>
+            <Typography variant="subtitle2" gutterBottom>
               Последние действия:
-            </Text>
-            <VStack spacing={1} align="stretch">
+            </Typography>
+            <Stack spacing={1}>
               {recentLogs.map((log) => (
-                <Box 
-                  key={log.id} 
-                  p={2} 
-                  bg={useColorModeValue('gray.50', 'gray.700')} 
-                  borderRadius="md"
-                  fontSize="xs"
+                <Paper 
+                  key={log.id}
+                  variant="outlined"
+                  sx={{ p: 1.5, borderRadius: 1 }}
                 >
-                  <Flex justifyContent="space-between" mb={0.5}>
-                    <Text fontWeight="medium" color={getLogColor(log.type)}>
-                      {log.type}
-                    </Text>
-                    <Text color="gray.500">
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                    <Box display="flex" alignItems="center">
+                      {getLogIcon(log.type)}
+                      <Typography variant="caption" sx={{ ml: 0.5 }}>
+                        {log.type}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
                       {new Date(log.timestamp).toLocaleTimeString()}
-                    </Text>
-                  </Flex>
-                  <Text>{log.message}</Text>
-                </Box>
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2">
+                    {log.message}
+                  </Typography>
+                  {log.progress !== undefined && (
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={log.progress} 
+                      sx={{ mt: 1, height: 4 }} 
+                    />
+                  )}
+                </Paper>
               ))}
-            </VStack>
+            </Stack>
           </Box>
         )}
-      </VStack>
-    </Box>
+      </CardContent>
+    </Card>
   );
 };
 

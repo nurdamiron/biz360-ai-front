@@ -1,59 +1,51 @@
-// src/pages/tasks/TasksPage.tsx
 import React, { useEffect, useState } from 'react';
 import {
   Box,
-  Heading,
-  SimpleGrid,
-  VStack,
-  HStack,
-  Text,
+  Typography,
   Button,
-  Select,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  Flex,
-  Checkbox,
-  Badge,
-  useColorModeValue,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  IconButton,
-  Spinner,
+  Grid,
+  TextField,
+  InputAdornment,
   FormControl,
-  FormLabel,
-  Divider,
+  InputLabel,
+  Select,
+  MenuItem,
   Card,
-  CardBody,
-  useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
-  Textarea
-} from '@chakra-ui/react';
-import { useNavigate } from 'react-router-dom';
+  CardContent,
+  Chip,
+  Skeleton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Paper,
+  Stack,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  SelectChangeEvent,
+  IconButton,
+  CircularProgress
+} from '@mui/material';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useSnackbar } from 'notistack';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchTasks, createTask } from '../../store/slices/tasksSlice';
 import { TaskFilterParams } from '../../types/api.types';
 import { Task, TaskStatus, TaskPriority } from '../../types/task.types';
 import TaskProgressCard from '../../components/task/TaskProgressCard';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const SearchIcon = () => <span>🔍</span>;
-const FilterIcon = () => <span>🔎</span>;
-const AddIcon = () => <span>➕</span>;
-const SortIcon = () => <span>↓↑</span>;
+// Иконки
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import FilterListOffIcon from '@mui/icons-material/FilterListOff';
 
 const TasksPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { enqueueSnackbar } = useSnackbar();
   const { tasks, isLoading } = useAppSelector(state => state.tasks);
   
   // Состояние для фильтров
@@ -81,8 +73,11 @@ const TasksPage: React.FC = () => {
     projectId: 1  // По умолчанию первый проект
   });
   
-  // Управление модальным окном создания задачи
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  // Состояние для диалогового окна создания задачи
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Состояние для активного фильтра
+  const [filterOpen, setFilterOpen] = useState(false);
   
   // Состояние для ошибок валидации
   const [validationErrors, setValidationErrors] = useState({
@@ -90,9 +85,15 @@ const TasksPage: React.FC = () => {
     description: ''
   });
   
-  // Цвета
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  // Проверяем проектные параметры из state навигации
+  useEffect(() => {
+    if (location.state && 'projectId' in location.state) {
+      setFilters(prev => ({
+        ...prev,
+        projectId: location.state.projectId as number
+      }));
+    }
+  }, [location.state]);
   
   // Загружаем задачи при монтировании и при изменении фильтров
   useEffect(() => {
@@ -117,7 +118,7 @@ const TasksPage: React.FC = () => {
   }, [dispatch, filters, searchTerm, statusFilter, priorityFilter]);
   
   // Обработчик изменения сортировки
-  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleSortChange = (e: SelectChangeEvent) => {
     const value = e.target.value;
     
     // Разбиваем значение на поле и порядок (например, "updatedAt_desc")
@@ -132,7 +133,7 @@ const TasksPage: React.FC = () => {
   };
   
   // Обработчик изменения количества элементов на странице
-  const handleLimitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleLimitChange = (e: SelectChangeEvent) => {
     setFilters({
       ...filters,
       limit: Number(e.target.value),
@@ -182,6 +183,26 @@ const TasksPage: React.FC = () => {
     });
   };
   
+  // Обработчик открытия диалогового окна создания задачи
+  const handleOpenDialog = () => {
+    setDialogOpen(true);
+  };
+  
+  // Обработчик закрытия диалогового окна создания задачи
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setNewTask({
+      title: '',
+      description: '',
+      priority: TaskPriority.MEDIUM,
+      projectId: 1
+    });
+    setValidationErrors({
+      title: '',
+      description: ''
+    });
+  };
+  
   // Обработчик создания новой задачи
   const handleCreateTask = async () => {
     // Проверка валидации
@@ -206,21 +227,13 @@ const TasksPage: React.FC = () => {
     try {
       const result = await dispatch(createTask(newTask)).unwrap();
       
-      // Закрываем модальное окно
-      onClose();
+      // Закрываем диалоговое окно
+      handleCloseDialog();
       
-      // Очищаем форму
-      setNewTask({
-        title: '',
-        description: '',
-        priority: TaskPriority.MEDIUM,
-        projectId: 1
-      });
-      
-      // Сбрасываем ошибки валидации
-      setValidationErrors({
-        title: '',
-        description: ''
+      // Показываем уведомление об успешном создании
+      enqueueSnackbar(`Задача "${result.title}" успешно создана`, { 
+        variant: 'success',
+        autoHideDuration: 3000
       });
       
       // Если задача создана успешно, переходим на страницу с деталями
@@ -228,290 +241,377 @@ const TasksPage: React.FC = () => {
         navigate(`/tasks/${result.id}`);
       }
     } catch (error) {
-      console.error('Error creating task:', error);
-      // Можно добавить обработку ошибок
+      enqueueSnackbar(error instanceof Error ? error.message : 'Произошла ошибка при создании задачи', { 
+        variant: 'error',
+        autoHideDuration: 3000
+      });
     }
+  };
+  
+  // Отрисовка скелетона загрузки
+  const renderSkeletons = () => {
+    return Array(4).fill(0).map((_, index) => (
+      <Grid item xs={12} md={6} key={`skeleton-${index}`}>
+        <Card variant="outlined">
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Skeleton variant="text" width="60%" height={30} />
+              <Skeleton variant="circular" width={40} height={40} />
+            </Box>
+            <Skeleton variant="text" width="40%" height={20} sx={{ mb: 2 }} />
+            <Skeleton variant="rectangular" height={60} sx={{ mb: 2 }} />
+            <Skeleton variant="text" width="100%" height={20} />
+            <Skeleton variant="text" width="100%" height={40} />
+          </CardContent>
+        </Card>
+      </Grid>
+    ));
   };
   
   return (
     <Box>
-      <Flex justifyContent="space-between" alignItems="center" mb={6}>
-        <VStack align="flex-start" spacing={1}>
-          <Heading size="lg">Задачи</Heading>
-          <Text color="gray.500">
-            Управление и мониторинг задач проекта
-          </Text>
-        </VStack>
-        
-        <Button 
-          leftIcon={<AddIcon />} 
-          colorScheme="blue" 
-          onClick={onOpen}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Задачи
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={handleOpenDialog}
         >
           Новая задача
         </Button>
-      </Flex>
+      </Box>
       
-      <Card borderColor={borderColor} boxShadow="sm" mb={6}>
-        <CardBody>
-          <Flex 
-            direction={{ base: 'column', md: 'row' }} 
-            justify="space-between" 
-            align={{ base: 'stretch', md: 'center' }}
-            gap={4}
-          >
-            <form onSubmit={handleSearchSubmit} style={{ flex: 1 }}>
-              <InputGroup>
-                <InputLeftElement pointerEvents="none">
-                  <SearchIcon />
-                </InputLeftElement>
-                <Input 
-                  placeholder="Поиск задач..." 
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                />
-              </InputGroup>
+      <Paper elevation={0} variant="outlined" sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <form onSubmit={handleSearchSubmit}>
+              <TextField
+                fullWidth
+                placeholder="Поиск задач..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
             </form>
-            
-            <HStack spacing={2}>
-              <Menu closeOnSelect={false}>
-                <MenuButton
-                  as={IconButton}
-                  aria-label="Фильтры"
-                  icon={<FilterIcon />}
-                  variant="outline"
-                />
-                <MenuList p={2} minWidth="240px">
-                  <Text fontWeight="bold" mb={2}>Статус</Text>
-                  <VStack align="start" mb={3} spacing={1}>
-                    <Checkbox
-                      isChecked={statusFilter.includes(TaskStatus.NEW)}
-                      onChange={() => handleStatusFilterChange(TaskStatus.NEW)}
-                    >
-                      Новые
-                    </Checkbox>
-                    <Checkbox
-                      isChecked={statusFilter.includes(TaskStatus.IN_PROGRESS)}
-                      onChange={() => handleStatusFilterChange(TaskStatus.IN_PROGRESS)}
-                    >
-                      В процессе
-                    </Checkbox>
-                    <Checkbox
-                      isChecked={statusFilter.includes(TaskStatus.COMPLETED)}
-                      onChange={() => handleStatusFilterChange(TaskStatus.COMPLETED)}
-                    >
-                      Завершенные
-                    </Checkbox>
-                    <Checkbox
-                      isChecked={statusFilter.includes(TaskStatus.FAILED)}
-                      onChange={() => handleStatusFilterChange(TaskStatus.FAILED)}
-                    >
-                      Ошибки
-                    </Checkbox>
-                  </VStack>
-                  
-                  <Divider my={2} />
-                  
-                  <Text fontWeight="bold" mb={2}>Приоритет</Text>
-                  <VStack align="start" mb={3} spacing={1}>
-                    <Checkbox
-                      isChecked={priorityFilter.includes(TaskPriority.LOW)}
-                      onChange={() => handlePriorityFilterChange(TaskPriority.LOW)}
-                    >
-                      Низкий
-                    </Checkbox>
-                    <Checkbox
-                      isChecked={priorityFilter.includes(TaskPriority.MEDIUM)}
-                      onChange={() => handlePriorityFilterChange(TaskPriority.MEDIUM)}
-                    >
-                      Средний
-                    </Checkbox>
-                    <Checkbox
-                      isChecked={priorityFilter.includes(TaskPriority.HIGH)}
-                      onChange={() => handlePriorityFilterChange(TaskPriority.HIGH)}
-                    >
-                      Высокий
-                    </Checkbox>
-                    <Checkbox
-                      isChecked={priorityFilter.includes(TaskPriority.CRITICAL)}
-                      onChange={() => handlePriorityFilterChange(TaskPriority.CRITICAL)}
-                    >
-                      Критический
-                    </Checkbox>
-                  </VStack>
-                  
-                  <Button 
-                    size="sm" 
-                    width="full" 
-                    onClick={handleResetFilters}
-                  >
-                    Сбросить все фильтры
-                  </Button>
-                </MenuList>
-              </Menu>
-              
-              <Select 
-                width="auto" 
-                size="md" 
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              variant={filterOpen ? "contained" : "outlined"}
+              startIcon={filterOpen ? <FilterListOffIcon /> : <FilterListIcon />}
+              onClick={() => setFilterOpen(!filterOpen)}
+              fullWidth
+            >
+              Фильтры
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="sort-label">Сортировка</InputLabel>
+              <Select
+                labelId="sort-label"
                 value={`${filters.sortBy}_${filters.sortOrder}`}
                 onChange={handleSortChange}
+                label="Сортировка"
               >
-                <option value="updatedAt_desc">Последние обновления</option>
-                <option value="createdAt_desc">Новые первыми</option>
-                <option value="createdAt_asc">Старые первыми</option>
-                <option value="priority_desc">По приоритету (выс→низк)</option>
-                <option value="priority_asc">По приоритету (низк→выс)</option>
+                <MenuItem value="updatedAt_desc">Последние обновления</MenuItem>
+                <MenuItem value="createdAt_desc">Новые первыми</MenuItem>
+                <MenuItem value="createdAt_asc">Старые первыми</MenuItem>
+                <MenuItem value="priority_desc">По приоритету (выс→низк)</MenuItem>
+                <MenuItem value="priority_asc">По приоритету (низк→выс)</MenuItem>
               </Select>
-              
-              <Select 
-                width="auto" 
-                size="md" 
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="limit-label">Показывать</InputLabel>
+              <Select
+                labelId="limit-label"
                 value={filters.limit.toString()}
                 onChange={handleLimitChange}
+                label="Показывать"
               >
-                <option value="5">5 на странице</option>
-                <option value="10">10 на странице</option>
-                <option value="20">20 на странице</option>
-                <option value="50">50 на странице</option>
+                <MenuItem value="5">5 на странице</MenuItem>
+                <MenuItem value="10">10 на странице</MenuItem>
+                <MenuItem value="20">20 на странице</MenuItem>
+                <MenuItem value="50">50 на странице</MenuItem>
               </Select>
-            </HStack>
-          </Flex>
+            </FormControl>
+          </Grid>
           
-          {/* Индикаторы активных фильтров */}
-          {(statusFilter.length > 0 || priorityFilter.length > 0 || searchTerm) && (
-            <Flex wrap="wrap" gap={2} mt={4}>
-              {searchTerm && (
-                <Badge colorScheme="blue" borderRadius="full" px={2} py={1}>
-                  Поиск: {searchTerm}
-                </Badge>
-              )}
+          <Grid item xs={12} sm={6} md={1}>
+            <IconButton 
+              color="primary" 
+              onClick={handleResetFilters}
+              title="Сбросить фильтры"
+              aria-label="Сбросить фильтры"
+            >
+              <FilterListOffIcon />
+            </IconButton>
+          </Grid>
+        </Grid>
+        
+        {/* Панель расширенных фильтров */}
+        {filterOpen && (
+          <Box mt={3} p={2} bgcolor="rgba(0, 0, 0, 0.02)" borderRadius={1}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Статус задачи
+                </Typography>
+                <FormGroup row>
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={statusFilter.includes(TaskStatus.NEW)}
+                        onChange={() => handleStatusFilterChange(TaskStatus.NEW)}
+                        size="small"
+                      />
+                    }
+                    label="Новые"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={statusFilter.includes(TaskStatus.IN_PROGRESS)}
+                        onChange={() => handleStatusFilterChange(TaskStatus.IN_PROGRESS)}
+                        size="small"
+                      />
+                    }
+                    label="В процессе"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={statusFilter.includes(TaskStatus.COMPLETED)}
+                        onChange={() => handleStatusFilterChange(TaskStatus.COMPLETED)}
+                        size="small"
+                      />
+                    }
+                    label="Завершенные"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={statusFilter.includes(TaskStatus.FAILED)}
+                        onChange={() => handleStatusFilterChange(TaskStatus.FAILED)}
+                        size="small"
+                      />
+                    }
+                    label="Ошибки"
+                  />
+                </FormGroup>
+              </Grid>
               
-              {statusFilter.map(status => (
-                <Badge key={status} colorScheme="purple" borderRadius="full" px={2} py={1}>
-                  Статус: {status}
-                </Badge>
-              ))}
-              
-              {priorityFilter.map(priority => (
-                <Badge key={priority} colorScheme="orange" borderRadius="full" px={2} py={1}>
-                  Приоритет: {priority}
-                </Badge>
-              ))}
-              
-              <Button 
-                size="xs" 
-                variant="ghost" 
-                onClick={handleResetFilters}
-              >
-                Сбросить все
-              </Button>
-            </Flex>
-          )}
-        </CardBody>
-      </Card>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Приоритет
+                </Typography>
+                <FormGroup row>
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={priorityFilter.includes(TaskPriority.LOW)}
+                        onChange={() => handlePriorityFilterChange(TaskPriority.LOW)}
+                        size="small"
+                      />
+                    }
+                    label="Низкий"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={priorityFilter.includes(TaskPriority.MEDIUM)}
+                        onChange={() => handlePriorityFilterChange(TaskPriority.MEDIUM)}
+                        size="small"
+                      />
+                    }
+                    label="Средний"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={priorityFilter.includes(TaskPriority.HIGH)}
+                        onChange={() => handlePriorityFilterChange(TaskPriority.HIGH)}
+                        size="small"
+                      />
+                    }
+                    label="Высокий"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={priorityFilter.includes(TaskPriority.CRITICAL)}
+                        onChange={() => handlePriorityFilterChange(TaskPriority.CRITICAL)}
+                        size="small"
+                      />
+                    }
+                    label="Критический"
+                  />
+                </FormGroup>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
+        
+        {/* Индикаторы активных фильтров */}
+        {(statusFilter.length > 0 || priorityFilter.length > 0 || searchTerm) && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>
+            {searchTerm && (
+              <Chip 
+                label={`Поиск: ${searchTerm}`} 
+                color="primary" 
+                onDelete={() => setSearchTerm('')} 
+                size="small"
+              />
+            )}
+            
+            {statusFilter.map(status => (
+              <Chip 
+                key={status} 
+                label={`Статус: ${status}`} 
+                color="secondary" 
+                onDelete={() => handleStatusFilterChange(status)} 
+                size="small"
+              />
+            ))}
+            
+            {priorityFilter.map(priority => (
+              <Chip 
+                key={priority} 
+                label={`Приоритет: ${priority}`} 
+                color="info" 
+                onDelete={() => handlePriorityFilterChange(priority)} 
+                size="small"
+              />
+            ))}
+            
+            <Chip 
+              label="Сбросить все" 
+              variant="outlined" 
+              onClick={handleResetFilters} 
+              size="small"
+            />
+          </Stack>
+        )}
+      </Paper>
       
       {isLoading ? (
-        <Flex justify="center" align="center" p={10}>
-          <Spinner size="xl" />
-        </Flex>
+        <Grid container spacing={3}>
+          {renderSkeletons()}
+        </Grid>
       ) : tasks.length > 0 ? (
-        <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+        <Grid container spacing={3}>
           {tasks.map(task => (
-            <TaskProgressCard key={task.id} task={task} />
+            <Grid item xs={12} sm={6} key={task.id}>
+              <TaskProgressCard task={task} />
+            </Grid>
           ))}
-        </SimpleGrid>
+        </Grid>
       ) : (
-        <Box p={10} textAlign="center">
-          <Text fontSize="lg" color="gray.500">
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
             Задачи не найдены
-          </Text>
-          <Text color="gray.500" mt={2}>
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
             Попробуйте изменить параметры фильтрации или создайте новую задачу
-          </Text>
+          </Typography>
           <Button 
-            mt={4} 
-            colorScheme="blue" 
-            leftIcon={<AddIcon />} 
-            onClick={onOpen}
+            variant="contained" 
+            color="primary" 
+            startIcon={<AddIcon />} 
+            onClick={handleOpenDialog}
+            sx={{ mt: 2 }}
           >
             Создать задачу
           </Button>
-        </Box>
+        </Paper>
       )}
       
-      {/* Модальное окно создания задачи */}
-      <Modal isOpen={isOpen} onClose={onClose} size="xl">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Создание новой задачи</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack spacing={4}>
-              <FormControl isRequired isInvalid={!!validationErrors.title}>
-                <FormLabel>Название задачи</FormLabel>
-                <Input 
-                  placeholder="Введите название задачи" 
-                  value={newTask.title}
-                  onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                />
-                {validationErrors.title && (
-                  <Text color="red.500" fontSize="sm" mt={1}>
-                    {validationErrors.title}
-                  </Text>
-                )}
-              </FormControl>
-              
-              <FormControl isRequired isInvalid={!!validationErrors.description}>
-                <FormLabel>Описание задачи</FormLabel>
-                <Textarea 
-                  placeholder="Подробно опишите задачу..." 
-                  rows={5}
-                  value={newTask.description}
-                  onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                />
-                {validationErrors.description && (
-                  <Text color="red.500" fontSize="sm" mt={1}>
-                    {validationErrors.description}
-                  </Text>
-                )}
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>Приоритет</FormLabel>
-                <Select 
-                  value={newTask.priority}
-                  onChange={(e) => setNewTask({...newTask, priority: e.target.value as TaskPriority})}
-                >
-                  <option value={TaskPriority.LOW}>Низкий</option>
-                  <option value={TaskPriority.MEDIUM}>Средний</option>
-                  <option value={TaskPriority.HIGH}>Высокий</option>
-                  <option value={TaskPriority.CRITICAL}>Критический</option>
-                </Select>
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>Проект</FormLabel>
-                <Select 
-                  value={newTask.projectId}
-                  onChange={(e) => setNewTask({...newTask, projectId: Number(e.target.value)})}
-                >
-                  <option value={1}>Biz360 CRM</option>
-                  {/* Здесь будет список проектов из API */}
-                </Select>
-              </FormControl>
-            </VStack>
-          </ModalBody>
+      {/* Диалоговое окно создания задачи */}
+      <Dialog 
+        open={dialogOpen} 
+        onClose={handleCloseDialog}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>Создание новой задачи</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="normal"
+            label="Название задачи"
+            fullWidth
+            variant="outlined"
+            value={newTask.title}
+            onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+            error={!!validationErrors.title}
+            helperText={validationErrors.title}
+          />
           
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onClose}>
-              Отмена
-            </Button>
-            <Button colorScheme="blue" onClick={handleCreateTask}>
-              Создать задачу
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          <TextField
+            margin="normal"
+            label="Описание задачи"
+            fullWidth
+            multiline
+            rows={5}
+            variant="outlined"
+            value={newTask.description}
+            onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+            error={!!validationErrors.description}
+            helperText={validationErrors.description}
+          />
+          
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="priority-label">Приоритет</InputLabel>
+            <Select
+              labelId="priority-label"
+              value={newTask.priority}
+              label="Приоритет"
+              onChange={(e) => setNewTask({...newTask, priority: e.target.value as TaskPriority})}
+            >
+              <MenuItem value={TaskPriority.LOW}>Низкий</MenuItem>
+              <MenuItem value={TaskPriority.MEDIUM}>Средний</MenuItem>
+              <MenuItem value={TaskPriority.HIGH}>Высокий</MenuItem>
+              <MenuItem value={TaskPriority.CRITICAL}>Критический</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="project-label">Проект</InputLabel>
+            <Select
+              labelId="project-label"
+              value={newTask.projectId.toString()}
+              label="Проект"
+              onChange={(e) => setNewTask({...newTask, projectId: Number(e.target.value)})}
+            >
+              <MenuItem value="1">Biz360 CRM</MenuItem>
+              {/* Здесь будет список проектов из API */}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="inherit">
+            Отмена
+          </Button>
+          <Button onClick={handleCreateTask} color="primary" variant="contained">
+            Создать задачу
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

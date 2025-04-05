@@ -1,65 +1,99 @@
-// src/pages/settings/SettingsPage.tsx
 import React, { useState } from 'react';
 import {
   Box,
-  Heading,
-  Text,
-  Flex,
-  VStack,
-  HStack,
-  SimpleGrid,
-  Button,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  CardHeader,
+  Divider,
+  TextField,
   FormControl,
   FormLabel,
-  FormHelperText,
-  Input,
-  Select,
+  FormControlLabel,
   Switch,
-  Divider,
-  Badge,
-  useToast,
-  useColorMode,
-  useColorModeValue,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
-  Card,
-  CardBody,
-  IconButton,
+  Select,
+  MenuItem,
+  Button,
   Avatar,
-  Code,
+  IconButton,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  ListItemSecondaryAction,
+  Chip,
   Slider,
-  SliderTrack,
-  SliderFilledTrack,
-  SliderThumb,
-  SliderMark,
-  Tooltip,
-  Radio,
+  Tabs,
+  Tab,
+  FormHelperText,
   RadioGroup,
-  Stack
-} from '@chakra-ui/react';
+  Radio,
+  Paper,
+  Stack,
+  InputLabel,
+  SelectChangeEvent,
+  Tooltip
+} from '@mui/material';
+import { useSnackbar } from 'notistack';
 import { useAppSelector } from '../../hooks/redux';
 import { Environment, getCurrentEnvironment, setEnvironment } from '../../config/api.config';
+import { ColorModeContext } from '../../App';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const SaveIcon = () => <span>💾</span>;
-const ResetIcon = () => <span>🔄</span>;
-const EditIcon = () => <span>✏️</span>;
-const UserIcon = () => <span>👤</span>;
-const LockIcon = () => <span>🔒</span>;
-const BellIcon = () => <span>🔔</span>;
-const ThemeIcon = () => <span>🎨</span>;
-const CodeIcon = () => <span>💻</span>;
-const NetworkIcon = () => <span>🌐</span>;
-const HistoryIcon = () => <span>⏱️</span>;
+// Иконки
+import SaveIcon from '@mui/icons-material/Save';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import EditIcon from '@mui/icons-material/Edit';
+import PersonIcon from '@mui/icons-material/Person';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import PaletteIcon from '@mui/icons-material/Palette';
+import CodeIcon from '@mui/icons-material/Code';
+import LanguageIcon from '@mui/icons-material/Language';
+import SecurityIcon from '@mui/icons-material/Security';
+import HistoryIcon from '@mui/icons-material/History';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`settings-tabpanel-${index}`}
+      aria-labelledby={`settings-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: { xs: 2, md: 3 } }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
+function a11yProps(index: number) {
+  return {
+    id: `settings-tab-${index}`,
+    'aria-controls': `settings-tabpanel-${index}`,
+  };
+}
 
 const SettingsPage: React.FC = () => {
-  const toast = useToast();
-  const { colorMode, toggleColorMode } = useColorMode();
+  const { enqueueSnackbar } = useSnackbar();
+  const colorMode = React.useContext(ColorModeContext);
   const { user } = useAppSelector(state => state.auth);
+  
+  // Активная вкладка
+  const [tabValue, setTabValue] = useState(0);
   
   // Локальные состояния для настроек
   const [environment, setCurrentEnvironment] = useState<Environment>(getCurrentEnvironment());
@@ -87,398 +121,516 @@ const SettingsPage: React.FC = () => {
     maxConcurrentRequests: 5
   });
   
-  // Цвета
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const cardBg = useColorModeValue('white', 'gray.800');
+  // Обработчик изменения вкладки
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
   
   // Обработчик изменения окружения
-  const handleEnvironmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleEnvironmentChange = (e: SelectChangeEvent) => {
     const newEnv = e.target.value as Environment;
     setCurrentEnvironment(newEnv);
     setEnvironment(newEnv);
     
-    toast({
-      title: 'Окружение изменено',
-      description: `Текущее окружение: ${newEnv === Environment.LOCAL ? 'Локальное' : 'Промышленное'}`,
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
+    enqueueSnackbar(`Текущее окружение: ${newEnv === Environment.LOCAL ? 'Локальное' : 'Промышленное'}`, {
+      variant: 'info'
     });
   };
   
   // Обработчик сохранения настроек пользователя
   const handleSaveUserSettings = () => {
-    toast({
-      title: 'Настройки сохранены',
-      description: 'Ваши настройки успешно сохранены',
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
+    enqueueSnackbar('Ваши настройки успешно сохранены', {
+      variant: 'success'
     });
   };
   
   // Обработчик сохранения системных настроек
   const handleSaveSystemSettings = () => {
-    toast({
-      title: 'Системные настройки сохранены',
-      description: 'Системные настройки успешно обновлены',
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
+    enqueueSnackbar('Системные настройки успешно обновлены', {
+      variant: 'success'
     });
   };
   
   // Обработчик сброса настроек
   const handleResetSettings = () => {
-    toast({
-      title: 'Настройки сброшены',
-      description: 'Все настройки сброшены до значений по умолчанию',
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
+    enqueueSnackbar('Все настройки сброшены до значений по умолчанию', {
+      variant: 'info'
     });
   };
   
   return (
     <Box>
-      <Flex justifyContent="space-between" alignItems="center" mb={6}>
-        <VStack align="flex-start" spacing={1}>
-          <Heading size="lg">Настройки</Heading>
-          <Text color="gray.500">
-            Настройка параметров ИИ-ассистента и пользовательских предпочтений
-          </Text>
-        </VStack>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Настройки
+        </Typography>
         
-        <HStack spacing={2}>
-          <Button 
-            leftIcon={<SaveIcon />} 
-            colorScheme="blue" 
+        <Box>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<SaveIcon />}
             onClick={handleSaveUserSettings}
+            sx={{ mr: 1 }}
           >
             Сохранить изменения
           </Button>
           
-          <Button 
-            leftIcon={<ResetIcon />} 
-            variant="outline" 
+          <Button
+            variant="outlined"
+            color="inherit"
+            startIcon={<RestartAltIcon />}
             onClick={handleResetSettings}
           >
             Сбросить
           </Button>
-        </HStack>
-      </Flex>
+        </Box>
+      </Box>
       
-      <Tabs variant="enclosed" colorScheme="blue" isLazy>
-        <TabList>
-          <Tab><HStack><UserIcon /><Text>Профиль</Text></HStack></Tab>
-          <Tab><HStack><BellIcon /><Text>Уведомления</Text></HStack></Tab>
-          <Tab><HStack><ThemeIcon /><Text>Интерфейс</Text></HStack></Tab>
-          <Tab><HStack><CodeIcon /><Text>ИИ-ассистент</Text></HStack></Tab>
-          <Tab><HStack><NetworkIcon /><Text>Подключение</Text></HStack></Tab>
-          <Tab><HStack><LockIcon /><Text>Безопасность</Text></HStack></Tab>
-        </TabList>
+      <Box sx={{ width: '100%' }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange} 
+            aria-label="settings tabs"
+            variant="scrollable"
+            scrollButtons="auto"
+          >
+            <Tab 
+              icon={<PersonIcon />} 
+              iconPosition="start" 
+              label="Профиль" 
+              {...a11yProps(0)} 
+            />
+            <Tab 
+              icon={<NotificationsIcon />} 
+              iconPosition="start" 
+              label="Уведомления" 
+              {...a11yProps(1)} 
+            />
+            <Tab 
+              icon={<PaletteIcon />} 
+              iconPosition="start" 
+              label="Интерфейс" 
+              {...a11yProps(2)} 
+            />
+            <Tab 
+              icon={<CodeIcon />} 
+              iconPosition="start" 
+              label="ИИ-ассистент" 
+              {...a11yProps(3)} 
+            />
+            <Tab 
+              icon={<LanguageIcon />} 
+              iconPosition="start" 
+              label="Подключение" 
+              {...a11yProps(4)} 
+            />
+            <Tab 
+              icon={<SecurityIcon />} 
+              iconPosition="start" 
+              label="Безопасность" 
+              {...a11yProps(5)} 
+            />
+          </Tabs>
+        </Box>
         
-        <TabPanels>
-          {/* Панель профиля */}
-          <TabPanel p={4}>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-              <Card borderColor={borderColor} bg={cardBg}>
-                <CardBody>
-                  <Heading size="md" mb={4}>Информация о пользователе</Heading>
-                  
-                  <HStack spacing={4} mb={6}>
-                    <Avatar size="xl" name={user?.username} src={user?.avatarUrl} />
-                    <VStack align="start" spacing={1}>
-                      <Text fontWeight="bold" fontSize="lg">{user?.firstName} {user?.lastName}</Text>
-                      <Text color="gray.500">{user?.email}</Text>
-                      <Badge colorScheme="purple">{user?.role}</Badge>
-                    </VStack>
-                    <IconButton 
-                      aria-label="Edit profile" 
-                      icon={<EditIcon />} 
-                      variant="ghost" 
-                      ml="auto"
+        {/* Панель профиля */}
+        <TabPanel value={tabValue} index={0}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={7}>
+              <Card variant="outlined">
+                <CardHeader title="Информация о пользователе" />
+                <Divider />
+                <CardContent>
+                  <Box display="flex" mb={4} alignItems="center">
+                    <Avatar
+                      sx={{ width: 80, height: 80, mr: 2 }}
+                      alt={user?.username || 'Пользователь'}
+                      src={user?.avatarUrl}
                     />
-                  </HStack>
+                    <Box>
+                      <Typography variant="h6">
+                        {user?.firstName} {user?.lastName}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {user?.email}
+                      </Typography>
+                      <Chip 
+                        label={user?.role} 
+                        color="primary" 
+                        size="small" 
+                        sx={{ mt: 1 }} 
+                      />
+                    </Box>
+                    <IconButton 
+                      sx={{ ml: 'auto' }} 
+                      color="primary"
+                      aria-label="Редактировать профиль"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </Box>
                   
-                  <SimpleGrid columns={2} spacing={4}>
-                    <FormControl>
-                      <FormLabel>Имя</FormLabel>
-                      <Input defaultValue={user?.firstName || ''} />
-                    </FormControl>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Имя"
+                        defaultValue={user?.firstName || ''}
+                        variant="outlined"
+                      />
+                    </Grid>
                     
-                    <FormControl>
-                      <FormLabel>Фамилия</FormLabel>
-                      <Input defaultValue={user?.lastName || ''} />
-                    </FormControl>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Фамилия"
+                        defaultValue={user?.lastName || ''}
+                        variant="outlined"
+                      />
+                    </Grid>
                     
-                    <FormControl>
-                      <FormLabel>Email</FormLabel>
-                      <Input defaultValue={user?.email || ''} />
-                    </FormControl>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Email"
+                        defaultValue={user?.email || ''}
+                        variant="outlined"
+                      />
+                    </Grid>
                     
-                    <FormControl>
-                      <FormLabel>Имя пользователя</FormLabel>
-                      <Input defaultValue={user?.username || ''} isReadOnly />
-                    </FormControl>
-                  </SimpleGrid>
-                </CardBody>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Имя пользователя"
+                        defaultValue={user?.username || ''}
+                        variant="outlined"
+                        InputProps={{
+                          readOnly: true,
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                </CardContent>
               </Card>
-              
-              <Card borderColor={borderColor} bg={cardBg}>
-                <CardBody>
-                  <Heading size="md" mb={4}>Статистика</Heading>
+            </Grid>
+            
+            <Grid item xs={12} md={5}>
+              <Card variant="outlined">
+                <CardHeader title="Статистика" />
+                <Divider />
+                <CardContent>
+                  <List disablePadding>
+                    <ListItem divider>
+                      <ListItemText primary="Создано задач" />
+                      <Typography variant="body1" fontWeight="medium">
+                        24
+                      </Typography>
+                    </ListItem>
+                    
+                    <ListItem divider>
+                      <ListItemText primary="Выполнено задач" />
+                      <Typography variant="body1" fontWeight="medium">
+                        18
+                      </Typography>
+                    </ListItem>
+                    
+                    <ListItem divider>
+                      <ListItemText primary="Проверено кода" />
+                      <Typography variant="body1" fontWeight="medium">
+                        42 файла
+                      </Typography>
+                    </ListItem>
+                    
+                    <ListItem divider>
+                      <ListItemText primary="Активно с" />
+                      <Typography variant="body1" fontWeight="medium">
+                        12.01.2023
+                      </Typography>
+                    </ListItem>
+                    
+                    <ListItem divider>
+                      <ListItemText primary="Роль" />
+                      <Chip label={user?.role} color="primary" size="small" />
+                    </ListItem>
+                    
+                    <ListItem>
+                      <ListItemText primary="Статус" />
+                      <Chip label="Активен" color="success" size="small" />
+                    </ListItem>
+                  </List>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </TabPanel>
+        
+        {/* Панель уведомлений */}
+        <TabPanel value={tabValue} index={1}>
+          <Card variant="outlined">
+            <CardHeader title="Настройки уведомлений" />
+            <Divider />
+            <CardContent>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={userSettings.notificationsEnabled}
+                        onChange={() => setUserSettings({
+                          ...userSettings,
+                          notificationsEnabled: !userSettings.notificationsEnabled
+                        })}
+                        color="primary"
+                      />
+                    }
+                    label="Включить уведомления"
+                  />
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={userSettings.emailNotifications}
+                        onChange={() => setUserSettings({
+                          ...userSettings,
+                          emailNotifications: !userSettings.emailNotifications
+                        })}
+                        color="primary"
+                        disabled={!userSettings.notificationsEnabled}
+                      />
+                    }
+                    label="Уведомления по электронной почте"
+                  />
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <Divider />
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom>
+                    Типы уведомлений
+                  </Typography>
                   
-                  <VStack spacing={4} align="stretch">
-                    <HStack justify="space-between">
-                      <Text>Создано задач:</Text>
-                      <Text fontWeight="bold">24</Text>
-                    </HStack>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            defaultChecked
+                            disabled={!userSettings.notificationsEnabled}
+                            color="primary"
+                          />
+                        }
+                        label="Создание задачи"
+                      />
+                    </Grid>
                     
-                    <HStack justify="space-between">
-                      <Text>Выполнено задач:</Text>
-                      <Text fontWeight="bold">18</Text>
-                    </HStack>
+                    <Grid item xs={12} sm={6}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            defaultChecked
+                            disabled={!userSettings.notificationsEnabled}
+                            color="primary"
+                          />
+                        }
+                        label="Завершение задачи"
+                      />
+                    </Grid>
                     
-                    <HStack justify="space-between">
-                      <Text>Проверено кода:</Text>
-                      <Text fontWeight="bold">42 файла</Text>
-                    </HStack>
+                    <Grid item xs={12} sm={6}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            defaultChecked
+                            disabled={!userSettings.notificationsEnabled}
+                            color="primary"
+                          />
+                        }
+                        label="Генерация кода"
+                      />
+                    </Grid>
                     
-                    <HStack justify="space-between">
-                      <Text>Активно с:</Text>
-                      <Text fontWeight="bold">12.01.2023</Text>
-                    </HStack>
-                    
+                    <Grid item xs={12} sm={6}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            defaultChecked
+                            disabled={!userSettings.notificationsEnabled}
+                            color="primary"
+                          />
+                        }
+                        label="Ошибки"
+                      />
+                    </Grid>
+                  </Grid>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </TabPanel>
+        
+        {/* Панель интерфейса */}
+        <TabPanel value={tabValue} index={2}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Card variant="outlined">
+                <CardHeader title="Настройки темы" />
+                <Divider />
+                <CardContent>
+                  <List disablePadding>
+                    <ListItem>
+                      <ListItemText primary="Темная тема" />
+                      <Switch
+                        edge="end"
+                        checked={colorMode.mode === 'dark'}
+                        onChange={colorMode.toggleColorMode}
+                        color="primary"
+                      />
+                    </ListItem>
                     <Divider />
                     
-                    <HStack justify="space-between">
-                      <Text>Роль:</Text>
-                      <Badge colorScheme="purple">{user?.role}</Badge>
-                    </HStack>
-                    
-                    <HStack justify="space-between">
-                      <Text>Статус:</Text>
-                      <Badge colorScheme="green">Активен</Badge>
-                    </HStack>
-                  </VStack>
-                </CardBody>
-              </Card>
-            </SimpleGrid>
-          </TabPanel>
-          
-          {/* Панель уведомлений */}
-          <TabPanel p={4}>
-            <Card borderColor={borderColor} bg={cardBg}>
-              <CardBody>
-                <Heading size="md" mb={4}>Настройки уведомлений</Heading>
-                
-                <VStack spacing={6} align="stretch">
-                  <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="notifications-toggle" mb="0">
-                      Включить уведомления
-                    </FormLabel>
-                    <Switch
-                      id="notifications-toggle"
-                      colorScheme="blue"
-                      isChecked={userSettings.notificationsEnabled}
-                      onChange={() => setUserSettings({
-                        ...userSettings,
-                        notificationsEnabled: !userSettings.notificationsEnabled
-                      })}
-                    />
-                  </FormControl>
-                  
-                  <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="email-notifications-toggle" mb="0">
-                      Уведомления по электронной почте
-                    </FormLabel>
-                    <Switch
-                      id="email-notifications-toggle"
-                      colorScheme="blue"
-                      isChecked={userSettings.emailNotifications}
-                      isDisabled={!userSettings.notificationsEnabled}
-                      onChange={() => setUserSettings({
-                        ...userSettings,
-                        emailNotifications: !userSettings.emailNotifications
-                      })}
-                    />
-                  </FormControl>
-                  
-                  <Divider />
-                  
-                  <Heading size="sm">Типы уведомлений</Heading>
-                  
-                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="task-created-toggle" mb="0">
-                        Создание задачи
-                      </FormLabel>
-                      <Switch
-                        id="task-created-toggle"
-                        colorScheme="blue"
-                        defaultChecked
-                        isDisabled={!userSettings.notificationsEnabled}
+                    <ListItem>
+                      <ListItemIcon>
+                        {colorMode.mode === 'dark' ? (
+                          <Brightness7Icon />
+                        ) : (
+                          <Brightness4Icon />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={
+                          colorMode.mode === 'dark'
+                            ? 'Включена темная тема'
+                            : 'Включена светлая тема'
+                        }
                       />
-                    </FormControl>
-                    
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="task-completed-toggle" mb="0">
-                        Завершение задачи
-                      </FormLabel>
-                      <Switch
-                        id="task-completed-toggle"
-                        colorScheme="blue"
-                        defaultChecked
-                        isDisabled={!userSettings.notificationsEnabled}
-                      />
-                    </FormControl>
-                    
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="code-generated-toggle" mb="0">
-                        Генерация кода
-                      </FormLabel>
-                      <Switch
-                        id="code-generated-toggle"
-                        colorScheme="blue"
-                        defaultChecked
-                        isDisabled={!userSettings.notificationsEnabled}
-                      />
-                    </FormControl>
-                    
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="error-toggle" mb="0">
-                        Ошибки
-                      </FormLabel>
-                      <Switch
-                        id="error-toggle"
-                        colorScheme="blue"
-                        defaultChecked
-                        isDisabled={!userSettings.notificationsEnabled}
-                      />
-                    </FormControl>
-                  </SimpleGrid>
-                </VStack>
-              </CardBody>
-            </Card>
-          </TabPanel>
-          
-          {/* Панель интерфейса */}
-          <TabPanel p={4}>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-              <Card borderColor={borderColor} bg={cardBg}>
-                <CardBody>
-                  <Heading size="md" mb={4}>Настройки темы</Heading>
-                  
-                  <VStack spacing={6} align="stretch">
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="theme-toggle" mb="0">
-                        Темная тема
-                      </FormLabel>
-                      <Switch
-                        id="theme-toggle"
-                        colorScheme="blue"
-                        isChecked={colorMode === 'dark'}
-                        onChange={toggleColorMode}
-                      />
-                    </FormControl>
-                    
-                    <FormControl>
-                      <FormLabel>Цветовая схема</FormLabel>
-                      <Select defaultValue="blue">
-                        <option value="blue">Синяя (по умолчанию)</option>
-                        <option value="purple">Фиолетовая</option>
-                        <option value="green">Зеленая</option>
-                        <option value="red">Красная</option>
-                      </Select>
-                      <FormHelperText>Основной цвет интерфейса</FormHelperText>
-                    </FormControl>
-                    
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="animations-toggle" mb="0">
-                        Анимации
-                      </FormLabel>
-                      <Switch
-                        id="animations-toggle"
-                        colorScheme="blue"
-                        defaultChecked
-                      />
-                    </FormControl>
-                  </VStack>
-                </CardBody>
-              </Card>
-              
-              <Card borderColor={borderColor} bg={cardBg}>
-                <CardBody>
-                  <Heading size="md" mb={4}>Настройки интерфейса</Heading>
-                  
-                  <VStack spacing={6} align="stretch">
-                    <FormControl>
-                      <FormLabel>Язык интерфейса</FormLabel>
-                      <Select 
-                        value={userSettings.language}
-                        onChange={(e) => setUserSettings({
-                          ...userSettings,
-                          language: e.target.value
-                        })}
+                      <IconButton
+                        onClick={colorMode.toggleColorMode}
+                        edge="end"
+                        color="primary"
                       >
-                        <option value="ru">Русский</option>
-                        <option value="en">English</option>
-                      </Select>
-                    </FormControl>
+                        {colorMode.mode === 'dark' ? (
+                          <Brightness7Icon />
+                        ) : (
+                          <Brightness4Icon />
+                        )}
+                      </IconButton>
+                    </ListItem>
+                    <Divider />
                     
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="compact-mode-toggle" mb="0">
-                        Компактный режим
-                      </FormLabel>
+                    <ListItem>
+                      <FormControl fullWidth>
+                        <InputLabel id="color-scheme-label">Цветовая схема</InputLabel>
+                        <Select
+                          labelId="color-scheme-label"
+                          value="blue"
+                          label="Цветовая схема"
+                        >
+                          <MenuItem value="blue">Синяя (по умолчанию)</MenuItem>
+                          <MenuItem value="purple">Фиолетовая</MenuItem>
+                          <MenuItem value="green">Зеленая</MenuItem>
+                          <MenuItem value="red">Красная</MenuItem>
+                        </Select>
+                        <FormHelperText>Основной цвет интерфейса</FormHelperText>
+                      </FormControl>
+                    </ListItem>
+                    <Divider />
+                    
+                    <ListItem>
+                      <ListItemText primary="Анимации" />
                       <Switch
-                        id="compact-mode-toggle"
-                        colorScheme="blue"
-                        defaultChecked={false}
+                        edge="end"
+                        defaultChecked
+                        color="primary"
                       />
-                    </FormControl>
+                    </ListItem>
+                  </List>
+                </CardContent>
+              </Card>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Card variant="outlined">
+                <CardHeader title="Настройки интерфейса" />
+                <Divider />
+                <CardContent>
+                  <List disablePadding>
+                    <ListItem>
+                      <FormControl fullWidth>
+                        <InputLabel id="language-label">Язык интерфейса</InputLabel>
+                        <Select
+                          labelId="language-label"
+                          value={userSettings.language}
+                          label="Язык интерфейса"
+                          onChange={(e) => setUserSettings({
+                            ...userSettings,
+                            language: e.target.value
+                          })}
+                        >
+                          <MenuItem value="ru">Русский</MenuItem>
+                          <MenuItem value="en">English</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </ListItem>
+                    <Divider />
                     
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="autosave-toggle" mb="0">
-                        Автосохранение
-                      </FormLabel>
+                    <ListItem>
+                      <ListItemText primary="Компактный режим" />
                       <Switch
-                        id="autosave-toggle"
-                        colorScheme="blue"
-                        isChecked={userSettings.autoSaveEnabled}
+                        edge="end"
+                        color="primary"
+                      />
+                    </ListItem>
+                    <Divider />
+                    
+                    <ListItem>
+                      <ListItemText primary="Автосохранение" />
+                      <Switch
+                        edge="end"
+                        checked={userSettings.autoSaveEnabled}
                         onChange={() => setUserSettings({
                           ...userSettings,
                           autoSaveEnabled: !userSettings.autoSaveEnabled
                         })}
+                        color="primary"
                       />
-                    </FormControl>
-                  </VStack>
-                </CardBody>
+                    </ListItem>
+                  </List>
+                </CardContent>
               </Card>
-            </SimpleGrid>
-          </TabPanel>
-          
-          {/* Панель ИИ-ассистента */}
-          <TabPanel p={4}>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-              <Card borderColor={borderColor} bg={cardBg}>
-                <CardBody>
-                  <Heading size="md" mb={4}>Настройки ИИ-модели</Heading>
-                  
-                  <VStack spacing={6} align="stretch">
-                    <FormControl>
-                      <FormLabel>Модель ИИ</FormLabel>
-                      <Select 
+            </Grid>
+          </Grid>
+        </TabPanel>
+        
+        {/* Панель ИИ-ассистента */}
+        <TabPanel value={tabValue} index={3}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Card variant="outlined">
+                <CardHeader title="Настройки ИИ-модели" />
+                <Divider />
+                <CardContent>
+                  <Stack spacing={3}>
+                    <FormControl fullWidth>
+                      <InputLabel id="ai-model-label">Модель ИИ</InputLabel>
+                      <Select
+                        labelId="ai-model-label"
                         value={userSettings.aiModel}
+                        label="Модель ИИ"
                         onChange={(e) => setUserSettings({
                           ...userSettings,
                           aiModel: e.target.value
                         })}
                       >
-                        <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-                        <option value="claude-3-opus">Claude 3 Opus</option>
-                        <option value="gpt-4o">GPT-4o</option>
-                        <option value="llama-3-70b">Llama 3 70B</option>
+                        <MenuItem value="claude-3.5-sonnet">Claude 3.5 Sonnet</MenuItem>
+                        <MenuItem value="claude-3-opus">Claude 3 Opus</MenuItem>
+                        <MenuItem value="gpt-4o">GPT-4o</MenuItem>
+                        <MenuItem value="llama-3-70b">Llama 3 70B</MenuItem>
                       </Select>
                       <FormHelperText>Основная модель для генерации кода</FormHelperText>
                     </FormControl>
@@ -487,294 +639,335 @@ const SettingsPage: React.FC = () => {
                       <FormLabel>Уровень проверки кода</FormLabel>
                       <RadioGroup
                         value={userSettings.codeReviewLevel}
-                        onChange={(value) => setUserSettings({
+                        onChange={(e) => setUserSettings({
                           ...userSettings,
-                          codeReviewLevel: value
+                          codeReviewLevel: e.target.value
                         })}
                       >
-                        <Stack direction="column" spacing={2}>
-                          <Radio value="minimal">
-                            Минимальный
-                            <Text fontSize="xs" color="gray.500">Простая проверка синтаксиса</Text>
-                          </Radio>
-                          <Radio value="balanced">
-                            Сбалансированный
-                            <Text fontSize="xs" color="gray.500">Оптимальный баланс между скоростью и тщательностью</Text>
-                          </Radio>
-                          <Radio value="thorough">
-                            Тщательный
-                            <Text fontSize="xs" color="gray.500">Максимально тщательный анализ кода</Text>
-                          </Radio>
-                        </Stack>
+                        <FormControlLabel 
+                          value="minimal" 
+                          control={<Radio />} 
+                          label={
+                            <Box>
+                              <Typography variant="body1">Минимальный</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Простая проверка синтаксиса
+                              </Typography>
+                            </Box>
+                          } 
+                        />
+                        <FormControlLabel 
+                          value="balanced" 
+                          control={<Radio />} 
+                          label={
+                            <Box>
+                              <Typography variant="body1">Сбалансированный</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Оптимальный баланс между скоростью и тщательностью
+                              </Typography>
+                            </Box>
+                          } 
+                        />
+                        <FormControlLabel 
+                          value="thorough" 
+                          control={<Radio />} 
+                          label={
+                            <Box>
+                              <Typography variant="body1">Тщательный</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Максимально тщательный анализ кода
+                              </Typography>
+                            </Box>
+                          } 
+                        />
                       </RadioGroup>
                     </FormControl>
                     
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="limit-tokens-toggle" mb="0">
-                        Ограничить использование токенов
-                      </FormLabel>
-                      <Switch
-                        id="limit-tokens-toggle"
-                        colorScheme="blue"
-                        isChecked={isLimitTokens}
-                        onChange={() => setIsLimitTokens(!isLimitTokens)}
-                      />
-                    </FormControl>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={isLimitTokens}
+                          onChange={() => setIsLimitTokens(!isLimitTokens)}
+                          color="primary"
+                        />
+                      }
+                      label="Ограничить использование токенов"
+                    />
                     
-                    <FormControl isDisabled={!isLimitTokens}>
-                      <FormLabel htmlFor="max-tokens-slider" mb={2}>
+                    <Box>
+                      <Typography gutterBottom>
                         Максимум токенов на запрос: {maxTokensPerRequest}
-                      </FormLabel>
+                      </Typography>
                       <Slider
-                        id="max-tokens-slider"
                         value={maxTokensPerRequest}
                         min={1000}
                         max={16000}
                         step={1000}
-                        onChange={setMaxTokensPerRequest}
-                        onMouseEnter={() => setShowSliderValue(true)}
-                        onMouseLeave={() => setShowSliderValue(false)}
+                        marks
+                        disabled={!isLimitTokens}
+                        valueLabelDisplay="auto"
+                        onChange={(_, value) => setMaxTokensPerRequest(value as number)}
+                      />
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Card variant="outlined">
+                <CardHeader title="Параметры генерации кода" />
+                <Divider />
+                <CardContent>
+                  <Stack spacing={3}>
+                    <FormControl fullWidth>
+                      <InputLabel id="framework-label">Фреймворк по умолчанию</InputLabel>
+                      <Select
+                        labelId="framework-label"
+                        defaultValue="react"
+                        label="Фреймворк по умолчанию"
                       >
-                        <SliderTrack>
-                          <SliderFilledTrack />
-                        </SliderTrack>
-                        <Tooltip
-                          hasArrow
-                          bg="blue.500"
-                          color="white"
-                          placement="top"
-                          isOpen={showSliderValue}
-                          label={`${maxTokensPerRequest}`}
-                        >
-                          <SliderThumb />
-                        </Tooltip>
-                      </Slider>
-                    </FormControl>
-                  </VStack>
-                </CardBody>
-              </Card>
-              
-              <Card borderColor={borderColor} bg={cardBg}>
-                <CardBody>
-                  <Heading size="md" mb={4}>Параметры генерации кода</Heading>
-                  
-                  <VStack spacing={6} align="stretch">
-                    <FormControl>
-                      <FormLabel>Фреймворк по умолчанию</FormLabel>
-                      <Select defaultValue="react">
-                        <option value="react">React</option>
-                        <option value="angular">Angular</option>
-                        <option value="vue">Vue</option>
-                        <option value="svelte">Svelte</option>
+                        <MenuItem value="react">React</MenuItem>
+                        <MenuItem value="angular">Angular</MenuItem>
+                        <MenuItem value="vue">Vue</MenuItem>
+                        <MenuItem value="svelte">Svelte</MenuItem>
                       </Select>
                     </FormControl>
                     
-                    <FormControl>
-                      <FormLabel>Стиль кода</FormLabel>
-                      <Select defaultValue="functional">
-                        <option value="functional">Функциональный</option>
-                        <option value="oop">Объектно-ориентированный</option>
-                        <option value="mixed">Смешанный</option>
+                    <FormControl fullWidth>
+                      <InputLabel id="code-style-label">Стиль кода</InputLabel>
+                      <Select
+                        labelId="code-style-label"
+                        defaultValue="functional"
+                        label="Стиль кода"
+                      >
+                        <MenuItem value="functional">Функциональный</MenuItem>
+                        <MenuItem value="oop">Объектно-ориентированный</MenuItem>
+                        <MenuItem value="mixed">Смешанный</MenuItem>
                       </Select>
                     </FormControl>
                     
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="typescript-toggle" mb="0">
-                        Использовать TypeScript
-                      </FormLabel>
-                      <Switch
-                        id="typescript-toggle"
-                        colorScheme="blue"
-                        defaultChecked
-                      />
-                    </FormControl>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          defaultChecked
+                          color="primary"
+                        />
+                      }
+                      label="Использовать TypeScript"
+                    />
                     
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="comments-toggle" mb="0">
-                        Подробные комментарии
-                      </FormLabel>
-                      <Switch
-                        id="comments-toggle"
-                        colorScheme="blue"
-                        defaultChecked
-                      />
-                    </FormControl>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          defaultChecked
+                          color="primary"
+                        />
+                      }
+                      label="Подробные комментарии"
+                    />
                     
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="tests-generation-toggle" mb="0">
-                        Генерировать тесты
-                      </FormLabel>
-                      <Switch
-                        id="tests-generation-toggle"
-                        colorScheme="blue"
-                        defaultChecked
-                      />
-                    </FormControl>
-                  </VStack>
-                </CardBody>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          defaultChecked
+                          color="primary"
+                        />
+                      }
+                      label="Генерировать тесты"
+                    />
+                  </Stack>
+                </CardContent>
               </Card>
-            </SimpleGrid>
-          </TabPanel>
-          
-          {/* Панель подключений */}
-          <TabPanel p={4}>
-            <Card borderColor={borderColor} bg={cardBg}>
-              <CardBody>
-                <Heading size="md" mb={4}>Настройки API и подключений</Heading>
+            </Grid>
+          </Grid>
+        </TabPanel>
+        
+        {/* Панель подключений */}
+        <TabPanel value={tabValue} index={4}>
+          <Card variant="outlined">
+            <CardHeader title="Настройки API и подключений" />
+            <Divider />
+            <CardContent>
+              <Stack spacing={3}>
+                <FormControl fullWidth>
+                  <InputLabel id="environment-label">Среда API</InputLabel>
+                  <Select
+                    labelId="environment-label"
+                    value={environment}
+                    label="Среда API"
+                    onChange={handleEnvironmentChange}
+                  >
+                    <MenuItem value={Environment.LOCAL}>Локальная (http://localhost:3000/api)</MenuItem>
+                    <MenuItem value={Environment.PRODUCTION}>Промышленная (https://ai-assistant-back-zneh.onrender.com/api)</MenuItem>
+                  </Select>
+                  <FormHelperText>
+                    Текущий API URL: <code>
+                      {environment === Environment.LOCAL ? 'http://localhost:3000/api' : 'https://ai-assistant-back-zneh.onrender.com/api'}
+                    </code>
+                  </FormHelperText>
+                </FormControl>
                 
-                <VStack spacing={6} align="stretch">
-                  <FormControl>
-                    <FormLabel>Среда API</FormLabel>
-                    <Select 
-                      value={environment}
-                      onChange={handleEnvironmentChange}
-                    >
-                      <option value={Environment.LOCAL}>Локальная (http://localhost:3000/api)</option>
-                      <option value={Environment.PRODUCTION}>Промышленная (https://ai-assistant-back-zneh.onrender.com/api)</option>
-                    </Select>
-                    <FormHelperText>
-                      Текущий API URL: <Code fontSize="sm">
-                        {environment === Environment.LOCAL ? 'http://localhost:3000/api' : 'https://ai-assistant-back-zneh.onrender.com/api'}
-                      </Code>
-                    </FormHelperText>
-                  </FormControl>
-                  
-                  <Divider />
-                  
-                  <Heading size="sm">Ключи API</Heading>
-                  
-                  <FormControl>
-                    <FormLabel>Ключ API ИИ-ассистента</FormLabel>
-                    <Input type="password" defaultValue="sk_••••••••••••••••••••••••••••••" />
-                    <FormHelperText>API ключ для доступа к сервисам ИИ-ассистента</FormHelperText>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>URL системы контроля версий</FormLabel>
-                    <Input defaultValue="https://github.com/organization/biz360-crm.git" />
-                    <FormHelperText>URL для интеграции с системой контроля версий</FormHelperText>
-                  </FormControl>
-                  
-                  <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="auto-update-toggle" mb="0">
-                      Автоматическое обновление
-                    </FormLabel>
+                <Divider />
+                
+                <Typography variant="h6">Ключи API</Typography>
+                
+                <TextField
+                  fullWidth
+                  label="Ключ API ИИ-ассистента"
+                  type="password"
+                  defaultValue="sk_••••••••••••••••••••••••••••••"
+                  helperText="API ключ для доступа к сервисам ИИ-ассистента"
+                />
+                
+                <TextField
+                  fullWidth
+                  label="URL системы контроля версий"
+                  defaultValue="https://github.com/organization/biz360-crm.git"
+                  helperText="URL для интеграции с системой контроля версий"
+                />
+                
+                <FormControlLabel
+                  control={
                     <Switch
-                      id="auto-update-toggle"
-                      colorScheme="blue"
-                      isChecked={systemSettings.autoUpdateEnabled}
+                      checked={systemSettings.autoUpdateEnabled}
                       onChange={() => setSystemSettings({
                         ...systemSettings,
                         autoUpdateEnabled: !systemSettings.autoUpdateEnabled
                       })}
+                      color="primary"
                     />
-                  </FormControl>
-                  
-                  <Button colorScheme="blue" alignSelf="flex-start" onClick={handleSaveSystemSettings}>
+                  }
+                  label="Автоматическое обновление"
+                />
+                
+                <Box>
+                  <Button 
+                    variant="contained" 
+                    color="primary"
+                    onClick={handleSaveSystemSettings}
+                  >
                     Сохранить настройки подключения
                   </Button>
-                </VStack>
-              </CardBody>
-            </Card>
-          </TabPanel>
-          
-          {/* Панель безопасности */}
-          <TabPanel p={4}>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-              <Card borderColor={borderColor} bg={cardBg}>
-                <CardBody>
-                  <Heading size="md" mb={4}>Безопасность аккаунта</Heading>
-                  
-                  <VStack spacing={6} align="stretch">
-                    <FormControl>
-                      <FormLabel>Текущий пароль</FormLabel>
-                      <Input type="password" placeholder="••••••••••••" />
-                    </FormControl>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </TabPanel>
+        
+        {/* Панель безопасности */}
+        <TabPanel value={tabValue} index={5}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Card variant="outlined">
+                <CardHeader title="Безопасность аккаунта" />
+                <Divider />
+                <CardContent>
+                  <Stack spacing={3}>
+                    <TextField
+                      fullWidth
+                      label="Текущий пароль"
+                      type="password"
+                      placeholder="••••••••••••"
+                    />
                     
-                    <FormControl>
-                      <FormLabel>Новый пароль</FormLabel>
-                      <Input type="password" placeholder="••••••••••••" />
-                      <FormHelperText>Минимум 8 символов, включая цифры и специальные символы</FormHelperText>
-                    </FormControl>
+                    <TextField
+                      fullWidth
+                      label="Новый пароль"
+                      type="password"
+                      placeholder="••••••••••••"
+                      helperText="Минимум 8 символов, включая цифры и специальные символы"
+                    />
                     
-                    <FormControl>
-                      <FormLabel>Подтверждение пароля</FormLabel>
-                      <Input type="password" placeholder="••••••••••••" />
-                    </FormControl>
+                    <TextField
+                      fullWidth
+                      label="Подтверждение пароля"
+                      type="password"
+                      placeholder="••••••••••••"
+                    />
                     
-                    <Button colorScheme="blue">Изменить пароль</Button>
-                    
-                    <Divider />
-                    
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="2fa-toggle" mb="0">
-                        Двухфакторная аутентификация
-                      </FormLabel>
-                      <Switch
-                        id="2fa-toggle"
-                        colorScheme="blue"
-                        defaultChecked={false}
-                      />
-                    </FormControl>
-                  </VStack>
-                </CardBody>
-              </Card>
-              
-              <Card borderColor={borderColor} bg={cardBg}>
-                <CardBody>
-                  <Heading size="md" mb={4}>Журнал активности</Heading>
-                  
-                  <VStack spacing={4} align="stretch">
-                    <HStack borderBottomWidth="1px" borderBottomColor={borderColor} pb={2}>
-                      <HistoryIcon />
-                      <VStack align="start" spacing={0}>
-                        <Text fontWeight="medium">Авторизация в системе</Text>
-                        <Text fontSize="sm" color="gray.500">Сегодня, 10:45</Text>
-                      </VStack>
-                      <Badge ml="auto" colorScheme="green">Успешно</Badge>
-                    </HStack>
-                    
-                    <HStack borderBottomWidth="1px" borderBottomColor={borderColor} pb={2}>
-                      <HistoryIcon />
-                      <VStack align="start" spacing={0}>
-                        <Text fontWeight="medium">Изменение настроек профиля</Text>
-                        <Text fontSize="sm" color="gray.500">Вчера, 14:23</Text>
-                      </VStack>
-                      <Badge ml="auto" colorScheme="blue">Изменение</Badge>
-                    </HStack>
-                    
-                    <HStack borderBottomWidth="1px" borderBottomColor={borderColor} pb={2}>
-                      <HistoryIcon />
-                      <VStack align="start" spacing={0}>
-                        <Text fontWeight="medium">Неудачная попытка входа</Text>
-                        <Text fontSize="sm" color="gray.500">23.04.2023, 09:12</Text>
-                      </VStack>
-                      <Badge ml="auto" colorScheme="red">Ошибка</Badge>
-                    </HStack>
-                    
-                    <Button variant="outline" size="sm" alignSelf="flex-end">
-                      Показать все
+                    <Button variant="contained" color="primary">
+                      Изменить пароль
                     </Button>
                     
                     <Divider />
                     
-                    <FormControl display="flex" alignItems="center">
-                      <FormLabel htmlFor="activity-log-toggle" mb="0">
-                        Ведение журнала активности
-                      </FormLabel>
-                      <Switch
-                        id="activity-log-toggle"
-                        colorScheme="blue"
-                        defaultChecked
-                      />
-                    </FormControl>
-                  </VStack>
-                </CardBody>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          color="primary"
+                        />
+                      }
+                      label="Двухфакторная аутентификация"
+                    />
+                  </Stack>
+                </CardContent>
               </Card>
-            </SimpleGrid>
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Card variant="outlined">
+                <CardHeader title="Журнал активности" />
+                <Divider />
+                <CardContent>
+                  <List>
+                    <ListItem divider>
+                      <ListItemIcon>
+                        <HistoryIcon />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Авторизация в системе"
+                        secondary="Сегодня, 10:45"
+                      />
+                      <Chip label="Успешно" color="success" size="small" />
+                    </ListItem>
+                    
+                    <ListItem divider>
+                      <ListItemIcon>
+                        <HistoryIcon />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Изменение настроек профиля"
+                        secondary="Вчера, 14:23"
+                      />
+                      <Chip label="Изменение" color="primary" size="small" />
+                    </ListItem>
+                    
+                    <ListItem divider>
+                      <ListItemIcon>
+                        <HistoryIcon />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Неудачная попытка входа"
+                        secondary="23.04.2023, 09:12"
+                      />
+                      <Chip label="Ошибка" color="error" size="small" />
+                    </ListItem>
+                  </List>
+                  
+                  <Box display="flex" justifyContent="flex-end" mt={2}>
+                    <Button size="small" variant="outlined">
+                      Показать все
+                    </Button>
+                  </Box>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        defaultChecked
+                        color="primary"
+                      />
+                    }
+                    label="Ведение журнала активности"
+                  />
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </TabPanel>
+      </Box>
     </Box>
   );
 };

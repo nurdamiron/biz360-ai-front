@@ -1,41 +1,44 @@
-// src/pages/tasks/TaskDetailPage.tsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
-  Heading,
-  Text,
-  VStack,
-  HStack,
-  Badge,
+  Typography,
   Button,
-  Flex,
   Grid,
-  GridItem,
-  Divider,
-  Progress,
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-  AccordionIcon,
-  Spinner,
-  useColorModeValue,
   Card,
+  CardContent,
   CardHeader,
-  CardBody,
-  CardFooter,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
+  Divider,
+  Chip,
+  LinearProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  CircularProgress,
   Tabs,
-  TabList,
-  TabPanels,
   Tab,
-  TabPanel,
-  useToast
-} from '@chakra-ui/react';
+  Stack,
+  IconButton,
+  Tooltip,
+  useTheme
+} from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
+import StopIcon from '@mui/icons-material/Stop';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import InfoIcon from '@mui/icons-material/Info';
+import WarningIcon from '@mui/icons-material/Warning';
+import UpdateIcon from '@mui/icons-material/Update';
+
+import { useSnackbar } from 'notistack';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { 
   fetchTaskById, 
@@ -53,28 +56,47 @@ import {
 import useWebSocket from '../../hooks/useWebSocket';
 import CodeEditorPanel from '../../components/code/CodeEditorPanel';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const PlayIcon = () => <span>▶️</span>;
-const PauseIcon = () => <span>⏸️</span>;
-const StopIcon = () => <span>⏹️</span>;
-const BackIcon = () => <span>←</span>;
-const RefreshIcon = () => <span>🔄</span>;
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+const TabPanel = (props: TabPanelProps) => {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`task-tabpanel-${index}`}
+      aria-labelledby={`task-tab-${index}`}
+      {...other}
+      style={{ width: '100%' }}
+    >
+      {value === index && (
+        <Box sx={{ p: 2 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 const TaskDetailPage: React.FC = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const theme = useTheme();
   const { selectedTask, isLoading } = useAppSelector(state => state.tasks);
-  const toast = useToast();
+  const { enqueueSnackbar } = useSnackbar();
   const { subscribe, unsubscribe } = useWebSocket();
+  
+  // Состояние для активной вкладки
+  const [tabValue, setTabValue] = useState(0);
   
   // Локальное состояние для обновления логов в реальном времени
   const [logs, setLogs] = useState<TaskLog[]>([]);
-  
-  // Цвета
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
   
   // Загружаем данные о задаче при монтировании
   useEffect(() => {
@@ -124,6 +146,11 @@ const TaskDetailPage: React.FC = () => {
     }
   }, [selectedTask?.logs]);
   
+  // Обработчик переключения вкладок
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+  
   // Обработчик запуска обработки задачи
   const handleProcessTask = async () => {
     if (!taskId) return;
@@ -131,21 +158,14 @@ const TaskDetailPage: React.FC = () => {
     try {
       await dispatch(processTask(Number(taskId))).unwrap();
       
-      toast({
-        title: 'Задача запущена',
-        description: 'ИИ-ассистент начал обработку задачи',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
+      enqueueSnackbar('ИИ-ассистент начал обработку задачи', {
+        variant: 'success'
       });
     } catch (error) {
-      toast({
-        title: 'Ошибка',
-        description: error instanceof Error ? error.message : 'Произошла ошибка при запуске задачи',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      enqueueSnackbar(
+        error instanceof Error ? error.message : 'Произошла ошибка при запуске задачи', 
+        { variant: 'error' }
+      );
     }
   };
   
@@ -157,76 +177,83 @@ const TaskDetailPage: React.FC = () => {
     }
   };
   
-  // Получаем статус задачи в виде бейджа
-  const getStatusBadge = (status: TaskStatus) => {
+  // Получаем статус задачи в виде чипа
+  const getStatusChip = (status: TaskStatus) => {
     const statusMap = {
-      [TaskStatus.NEW]: { color: 'gray', text: 'Новая' },
-      [TaskStatus.PENDING]: { color: 'blue', text: 'Ожидание' },
-      [TaskStatus.IN_PROGRESS]: { color: 'yellow', text: 'В процессе' },
-      [TaskStatus.RESOLVED]: { color: 'teal', text: 'Решена' },
-      [TaskStatus.COMPLETED]: { color: 'green', text: 'Завершена' },
-      [TaskStatus.FAILED]: { color: 'red', text: 'Ошибка' },
-      [TaskStatus.CANCELED]: { color: 'orange', text: 'Отменена' },
+      [TaskStatus.NEW]: { color: 'default', text: 'Новая' },
+      [TaskStatus.PENDING]: { color: 'primary', text: 'Ожидание' },
+      [TaskStatus.IN_PROGRESS]: { color: 'warning', text: 'В процессе' },
+      [TaskStatus.RESOLVED]: { color: 'info', text: 'Решена' },
+      [TaskStatus.COMPLETED]: { color: 'success', text: 'Завершена' },
+      [TaskStatus.FAILED]: { color: 'error', text: 'Ошибка' },
+      [TaskStatus.CANCELED]: { color: 'default', text: 'Отменена' },
     };
     
-    const { color, text } = statusMap[status] || { color: 'gray', text: status };
+    const { color, text } = statusMap[status] || { color: 'default', text: status };
     
     return (
-      <Badge colorScheme={color} borderRadius="full" px={2}>
-        {text}
-      </Badge>
+      <Chip 
+        label={text} 
+        color={color as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'} 
+        size="small" 
+      />
     );
   };
   
-  // Получаем цвет для типа лога
-  const getLogColor = (type: LogType) => {
-    const logColorMap = {
-      [LogType.INFO]: 'blue.500',
-      [LogType.ERROR]: 'red.500',
-      [LogType.WARNING]: 'orange.500',
-      [LogType.PROGRESS]: 'green.500',
-    };
-    
-    return logColorMap[type] || 'gray.500';
+  // Получаем иконку для типа лога
+  const getLogIcon = (type: LogType) => {
+    switch (type) {
+      case LogType.INFO:
+        return <InfoIcon fontSize="small" color="info" />;
+      case LogType.ERROR:
+        return <ErrorOutlineIcon fontSize="small" color="error" />;
+      case LogType.WARNING:
+        return <WarningIcon fontSize="small" color="warning" />;
+      case LogType.PROGRESS:
+        return <UpdateIcon fontSize="small" color="success" />;
+      default:
+        return <InfoIcon fontSize="small" />;
+    }
   };
   
   // Преобразуем логи для отображения
   const renderLogs = () => {
     return logs.length > 0 ? (
-      <VStack spacing={2} align="stretch" maxH="500px" overflowY="auto" p={2}>
+      <Stack spacing={1} sx={{ maxHeight: '500px', overflowY: 'auto', p: 1 }}>
         {logs.map((log) => (
-          <Box 
+          <Paper 
             key={log.id} 
-            p={3} 
-            borderWidth="1px" 
-            borderRadius="md" 
-            borderColor={borderColor}
+            variant="outlined"
+            sx={{ p: 2 }}
           >
-            <Flex justifyContent="space-between" mb={1}>
-              <Text fontWeight="medium" color={getLogColor(log.type)}>
-                {log.type}
-              </Text>
-              <Text fontSize="sm" color="gray.500">
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+              <Box display="flex" alignItems="center">
+                {getLogIcon(log.type)}
+                <Typography variant="body2" fontWeight="medium" sx={{ ml: 1 }}>
+                  {log.type}
+                </Typography>
+              </Box>
+              <Typography variant="caption" color="text.secondary">
                 {new Date(log.timestamp).toLocaleString()}
-              </Text>
-            </Flex>
-            <Text>{log.message}</Text>
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              {log.message}
+            </Typography>
             {log.progress !== undefined && (
-              <Progress 
+              <LinearProgress 
+                variant="determinate" 
                 value={log.progress} 
-                size="xs" 
-                colorScheme="blue" 
-                mt={2} 
-                borderRadius="full"
+                sx={{ mt: 2, height: 6, borderRadius: 3 }} 
               />
             )}
-          </Box>
+          </Paper>
         ))}
-      </VStack>
+      </Stack>
     ) : (
-      <Text color="gray.500" textAlign="center" py={4}>
+      <Typography color="text.secondary" align="center" py={4}>
         Логи отсутствуют
-      </Text>
+      </Typography>
     );
   };
   
@@ -234,70 +261,83 @@ const TaskDetailPage: React.FC = () => {
   const renderSubtasks = (subtasks?: Subtask[]) => {
     if (!subtasks || subtasks.length === 0) {
       return (
-        <Text color="gray.500" textAlign="center" py={4}>
+        <Typography color="text.secondary" align="center" py={4}>
           Подзадачи отсутствуют или еще не созданы
-        </Text>
+        </Typography>
       );
     }
     
     return (
-      <Accordion allowMultiple defaultIndex={[0]}>
+      <div>
         {subtasks.map((subtask) => (
-          <AccordionItem key={subtask.id} borderColor={borderColor}>
-            <h2>
-              <AccordionButton py={3}>
-                <Box flex="1" textAlign="left">
-                  <Flex justifyContent="space-between" alignItems="center">
-                    <Text fontWeight="medium">{subtask.title}</Text>
-                    <HStack spacing={2}>
-                      {getStatusBadge(subtask.status)}
-                      <Text>{subtask.progress}%</Text>
-                    </HStack>
-                  </Flex>
+          <Accordion key={subtask.id} defaultExpanded={true}>
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              aria-controls={`subtask-${subtask.id}-content`}
+              id={`subtask-${subtask.id}-header`}
+            >
+              <Box width="100%" display="flex" justifyContent="space-between" alignItems="center" pr={2}>
+                <Typography variant="subtitle1">
+                  {subtask.title}
+                </Typography>
+                <Box display="flex" alignItems="center" gap={1}>
+                  {getStatusChip(subtask.status)}
+                  <Typography variant="body2">
+                    {subtask.progress}%
+                  </Typography>
                 </Box>
-                <AccordionIcon />
-              </AccordionButton>
-            </h2>
-            <AccordionPanel pb={4}>
-              <VStack align="stretch" spacing={3}>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Stack spacing={2}>
                 {subtask.description && (
-                  <Text>{subtask.description}</Text>
+                  <Typography variant="body2">
+                    {subtask.description}
+                  </Typography>
                 )}
                 
-                <Progress 
+                <LinearProgress 
+                  variant="determinate" 
                   value={subtask.progress} 
-                  size="sm" 
-                  colorScheme={subtask.status === TaskStatus.FAILED ? 'red' : 'blue'} 
-                  borderRadius="full"
+                  color={subtask.status === TaskStatus.FAILED ? 'error' : 'primary'} 
+                  sx={{ height: 6, borderRadius: 3 }}
                 />
                 
                 {subtask.dependsOn && subtask.dependsOn.length > 0 && (
-                  <HStack>
-                    <Text fontWeight="medium">Зависит от:</Text>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Typography variant="body2" fontWeight="medium">
+                      Зависит от:
+                    </Typography>
                     {subtask.dependsOn.map(depId => (
-                      <Badge key={depId} colorScheme="purple">
-                        #{depId}
-                      </Badge>
+                      <Chip 
+                        key={depId} 
+                        label={`#${depId}`} 
+                        color="secondary" 
+                        size="small" 
+                        variant="outlined"
+                      />
                     ))}
-                  </HStack>
+                  </Box>
                 )}
                 
-                {subtask.startTime && (
-                  <Text fontSize="sm" color="gray.500">
-                    Начало: {new Date(subtask.startTime).toLocaleString()}
-                  </Text>
-                )}
-                
-                {subtask.endTime && (
-                  <Text fontSize="sm" color="gray.500">
-                    Завершение: {new Date(subtask.endTime).toLocaleString()}
-                  </Text>
-                )}
-              </VStack>
-            </AccordionPanel>
-          </AccordionItem>
+                <Stack direction="row" spacing={2} flexWrap="wrap">
+                  {subtask.startTime && (
+                    <Typography variant="body2" color="text.secondary">
+                      Начало: {new Date(subtask.startTime).toLocaleString()}
+                    </Typography>
+                  )}
+                  
+                  {subtask.endTime && (
+                    <Typography variant="body2" color="text.secondary">
+                      Завершение: {new Date(subtask.endTime).toLocaleString()}
+                    </Typography>
+                  )}
+                </Stack>
+              </Stack>
+            </AccordionDetails>
+          </Accordion>
         ))}
-      </Accordion>
+      </div>
     );
   };
   
@@ -305,14 +345,14 @@ const TaskDetailPage: React.FC = () => {
   const renderCodeGenerations = () => {
     if (!selectedTask?.codeGenerations || selectedTask.codeGenerations.length === 0) {
       return (
-        <Text color="gray.500" textAlign="center" py={4}>
+        <Typography color="text.secondary" align="center" py={4}>
           Генерации кода отсутствуют
-        </Text>
+        </Typography>
       );
     }
     
     return (
-      <VStack spacing={6} align="stretch">
+      <Stack spacing={3}>
         {selectedTask.codeGenerations.map((generation) => (
           <CodeEditorPanel 
             key={generation.id} 
@@ -320,7 +360,7 @@ const TaskDetailPage: React.FC = () => {
             onRegenerate={() => console.log('Regenerate code for', generation.id)}
           />
         ))}
-      </VStack>
+      </Stack>
     );
   };
   
@@ -331,17 +371,24 @@ const TaskDetailPage: React.FC = () => {
   
   if (isLoading) {
     return (
-      <Flex justify="center" align="center" p={10}>
-        <Spinner size="xl" />
-      </Flex>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+        <CircularProgress />
+      </Box>
     );
   }
   
   if (!selectedTask) {
     return (
-      <Box textAlign="center" p={10}>
-        <Heading size="md" mb={4}>Задача не найдена</Heading>
-        <Button leftIcon={<BackIcon />} onClick={() => navigate('/tasks')}>
+      <Box textAlign="center" py={5}>
+        <Typography variant="h6" gutterBottom>
+          Задача не найдена
+        </Typography>
+        <Button 
+          variant="outlined" 
+          startIcon={<ArrowBackIcon />} 
+          onClick={() => navigate('/tasks')}
+          sx={{ mt: 2 }}
+        >
           Вернуться к списку задач
         </Button>
       </Box>
@@ -350,28 +397,29 @@ const TaskDetailPage: React.FC = () => {
   
   return (
     <Box>
-      <HStack justifyContent="space-between" alignItems="center" mb={6}>
-        <Button 
-          leftIcon={<BackIcon />} 
-          variant="ghost" 
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/tasks')}
         >
           К списку задач
         </Button>
         
-        <HStack>
-          <Button 
-            leftIcon={<RefreshIcon />} 
-            variant="outline" 
+        <Box display="flex" gap={1}>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
             onClick={handleRefresh}
           >
             Обновить
           </Button>
           
           {canProcess && (
-            <Button 
-              leftIcon={<PlayIcon />} 
-              colorScheme="green" 
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<PlayArrowIcon />}
               onClick={handleProcessTask}
             >
               Запустить обработку
@@ -379,237 +427,327 @@ const TaskDetailPage: React.FC = () => {
           )}
           
           {canPause && (
-            <Button 
-              leftIcon={<PauseIcon />} 
-              colorScheme="yellow"
+            <Button
+              variant="contained"
+              color="warning"
+              startIcon={<PauseIcon />}
             >
               Приостановить
             </Button>
           )}
           
           {canStop && (
-            <Button 
-              leftIcon={<StopIcon />} 
-              colorScheme="red"
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<StopIcon />}
             >
               Остановить
             </Button>
           )}
-        </HStack>
-      </HStack>
+        </Box>
+      </Box>
       
-      <Grid 
-        templateColumns={{ base: '1fr', lg: '2fr 1fr' }} 
-        gap={6}
-      >
-        <GridItem>
-          <Card borderColor={borderColor} boxShadow="sm" mb={6}>
-            <CardHeader>
-              <VStack align="flex-start" spacing={1}>
-                <Heading size="lg">{selectedTask.title}</Heading>
-                <HStack spacing={2}>
-                  {getStatusBadge(selectedTask.status)}
-                  <Badge colorScheme="purple" borderRadius="full" px={2}>
-                    #{selectedTask.id}
-                  </Badge>
-                </HStack>
-              </VStack>
-            </CardHeader>
-            
-            <CardBody>
-              <VStack align="stretch" spacing={4}>
-                <Text>{selectedTask.description}</Text>
-                
-                <Divider />
-                
-                <HStack justify="space-between">
-                  <Text fontWeight="medium">Прогресс:</Text>
-                  <Text>{selectedTask.progress}%</Text>
-                </HStack>
-                
-                <Progress 
+      <Grid container spacing={3}>
+        <Grid item xs={12} lg={8}>
+          <Card variant="outlined" sx={{ mb: 3 }}>
+            <CardHeader
+              title={
+                <Box>
+                  <Typography variant="h5" gutterBottom>
+                    {selectedTask.title}
+                  </Typography>
+                  <Stack direction="row" spacing={1}>
+                    {getStatusChip(selectedTask.status)}
+                    <Chip 
+                      label={`#${selectedTask.id}`} 
+                      color="secondary" 
+                      size="small" 
+                      variant="outlined" 
+                    />
+                  </Stack>
+                </Box>
+              }
+            />
+            <Divider />
+            <CardContent>
+              <Typography paragraph>
+                {selectedTask.description}
+              </Typography>
+              
+              <Divider sx={{ my: 2 }} />
+              
+              <Box mb={3}>
+                <Box display="flex" justifyContent="space-between" mb={1}>
+                  <Typography variant="body2" fontWeight="medium">
+                    Прогресс:
+                  </Typography>
+                  <Typography variant="body2">
+                    {selectedTask.progress}%
+                  </Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
                   value={selectedTask.progress} 
-                  size="md" 
-                  colorScheme={selectedTask.status === TaskStatus.FAILED ? 'red' : 'blue'} 
-                  borderRadius="full"
+                  color={selectedTask.status === TaskStatus.FAILED ? 'error' : 'primary'} 
+                  sx={{ height: 8, borderRadius: 4 }}
                 />
-              </VStack>
-            </CardBody>
-            
-            <CardFooter>
-              <Flex width="100%" justifyContent="space-between" flexWrap="wrap">
-                <Text fontSize="sm" color="gray.500">
+              </Box>
+              
+              <Box display="flex" justifyContent="space-between" flexWrap="wrap">
+                <Typography variant="body2" color="text.secondary">
                   Создана: {new Date(selectedTask.createdAt).toLocaleString()}
-                </Text>
-                <Text fontSize="sm" color="gray.500">
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
                   Обновлена: {new Date(selectedTask.updatedAt).toLocaleString()}
-                </Text>
-              </Flex>
-            </CardFooter>
+                </Typography>
+              </Box>
+            </CardContent>
           </Card>
           
-          <Tabs variant="enclosed" colorScheme="blue" isLazy>
-            <TabList>
-              <Tab>Подзадачи</Tab>
-              <Tab>Генерации кода</Tab>
-              <Tab>Логи</Tab>
-            </TabList>
-            
-            <TabPanels>
-              <TabPanel p={4}>
-                {renderSubtasks(selectedTask.subtasks)}
-              </TabPanel>
-              
-              <TabPanel p={4}>
-                {renderCodeGenerations()}
-              </TabPanel>
-              
-              <TabPanel p={4}>
-                {renderLogs()}
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
-        </GridItem>
+          <Box sx={{ width: '100%', mb: 4 }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs 
+                value={tabValue} 
+                onChange={handleTabChange} 
+                aria-label="task tabs"
+                variant="scrollable"
+                scrollButtons="auto"
+              >
+                <Tab label="Подзадачи" id="task-tab-0" aria-controls="task-tabpanel-0" />
+                <Tab label="Генерации кода" id="task-tab-1" aria-controls="task-tabpanel-1" />
+                <Tab label="Логи" id="task-tab-2" aria-controls="task-tabpanel-2" />
+              </Tabs>
+            </Box>
+            <TabPanel value={tabValue} index={0}>
+              {renderSubtasks(selectedTask.subtasks)}
+            </TabPanel>
+            <TabPanel value={tabValue} index={1}>
+              {renderCodeGenerations()}
+            </TabPanel>
+            <TabPanel value={tabValue} index={2}>
+              {renderLogs()}
+            </TabPanel>
+          </Box>
+        </Grid>
         
-        <GridItem>
-          <Card borderColor={borderColor} boxShadow="sm" mb={6}>
-            <CardHeader>
-              <Heading size="md">Информация о задаче</Heading>
-            </CardHeader>
-            <CardBody>
-              <VStack spacing={4} align="stretch">
-                <HStack justify="space-between">
-                  <Text fontWeight="medium">Проект:</Text>
-                  <Text>Biz360 CRM</Text>
-                </HStack>
+        <Grid item xs={12} lg={4}>
+          <Stack spacing={3}>
+            <Card variant="outlined">
+              <CardHeader title="Информация о задаче" />
+              <Divider />
+              <List>
+                <ListItem>
+                  <ListItemText 
+                    primary="Проект" 
+                    secondary="Biz360 CRM" 
+                  />
+                </ListItem>
+                <Divider component="li" />
                 
-                <Divider />
+                <ListItem>
+                  <ListItemText 
+                    primary="Приоритет" 
+                    secondary={selectedTask.priority} 
+                  />
+                  <ListItemSecondaryAction>
+                    <Chip 
+                      label={selectedTask.priority} 
+                      color={
+                        selectedTask.priority === 'critical' ? 'error' : 
+                        selectedTask.priority === 'high' ? 'warning' : 
+                        selectedTask.priority === 'medium' ? 'primary' : 
+                        'default'
+                      } 
+                      size="small"
+                    />
+                  </ListItemSecondaryAction>
+                </ListItem>
+                <Divider component="li" />
                 
-                <HStack justify="space-between">
-                  <Text fontWeight="medium">Приоритет:</Text>
-                  <Badge colorScheme={
-                    selectedTask.priority === 'critical' ? 'red' : 
-                    selectedTask.priority === 'high' ? 'orange' : 
-                    selectedTask.priority === 'medium' ? 'blue' : 
-                    'gray'
-                  }>
-                    {selectedTask.priority}
-                  </Badge>
-                </HStack>
+                <ListItem>
+                  <ListItemText 
+                    primary="Создана" 
+                    secondary={new Date(selectedTask.createdAt).toLocaleDateString()} 
+                  />
+                </ListItem>
+                <Divider component="li" />
                 
-                <Divider />
-                
-                <HStack justify="space-between">
-                  <Text fontWeight="medium">Создана:</Text>
-                  <Text>{new Date(selectedTask.createdAt).toLocaleDateString()}</Text>
-                </HStack>
-                
-                <Divider />
-                
-                <HStack justify="space-between">
-                  <Text fontWeight="medium">Автор:</Text>
-                  <Text>Пользователь #{selectedTask.createdBy}</Text>
-                </HStack>
+                <ListItem>
+                  <ListItemText 
+                    primary="Автор" 
+                    secondary={`Пользователь #${selectedTask.createdBy}`} 
+                  />
+                </ListItem>
                 
                 {selectedTask.assignedTo && (
                   <>
-                    <Divider />
-                    <HStack justify="space-between">
-                      <Text fontWeight="medium">Назначена:</Text>
-                      <Text>Пользователь #{selectedTask.assignedTo}</Text>
-                    </HStack>
+                    <Divider component="li" />
+                    <ListItem>
+                      <ListItemText 
+                        primary="Назначена" 
+                        secondary={`Пользователь #${selectedTask.assignedTo}`} 
+                      />
+                    </ListItem>
                   </>
                 )}
                 
                 {selectedTask.startTime && (
                   <>
-                    <Divider />
-                    <HStack justify="space-between">
-                      <Text fontWeight="medium">Начало работы:</Text>
-                      <Text>{new Date(selectedTask.startTime).toLocaleString()}</Text>
-                    </HStack>
+                    <Divider component="li" />
+                    <ListItem>
+                      <ListItemText 
+                        primary="Начало работы" 
+                        secondary={new Date(selectedTask.startTime).toLocaleString()} 
+                      />
+                    </ListItem>
                   </>
                 )}
                 
                 {selectedTask.endTime && (
                   <>
-                    <Divider />
-                    <HStack justify="space-between">
-                      <Text fontWeight="medium">Завершение:</Text>
-                      <Text>{new Date(selectedTask.endTime).toLocaleString()}</Text>
-                    </HStack>
+                    <Divider component="li" />
+                    <ListItem>
+                      <ListItemText 
+                        primary="Завершение" 
+                        secondary={new Date(selectedTask.endTime).toLocaleString()} 
+                      />
+                    </ListItem>
                   </>
                 )}
-              </VStack>
-            </CardBody>
-          </Card>
-          
-          <SimpleGrid columns={2} spacing={4} mb={6}>
-            <Stat
-              p={4}
-              bg={cardBg}
-              borderRadius="lg"
-              boxShadow="sm"
-              borderWidth="1px"
-              borderColor={borderColor}
-            >
-              <StatLabel>Подзадачи</StatLabel>
-              <StatNumber>{selectedTask.subtasks?.length || 0}</StatNumber>
-              <StatHelpText>
-                {selectedTask.subtasks?.filter(s => s.status === TaskStatus.COMPLETED).length || 0} завершено
-              </StatHelpText>
-            </Stat>
+              </List>
+            </Card>
             
-            <Stat
-              p={4}
-              bg={cardBg}
-              borderRadius="lg"
-              boxShadow="sm"
-              borderWidth="1px"
-              borderColor={borderColor}
-            >
-              <StatLabel>Генерации кода</StatLabel>
-              <StatNumber>{selectedTask.codeGenerations?.length || 0}</StatNumber>
-              <StatHelpText>
-                {selectedTask.codeGenerations?.filter(c => c.status === 'approved').length || 0} одобрено
-              </StatHelpText>
-            </Stat>
-          </SimpleGrid>
-          
-          <Card borderColor={borderColor} boxShadow="sm">
-            <CardHeader>
-              <Heading size="md">Последняя активность</Heading>
-            </CardHeader>
-            <CardBody>
-              <VStack spacing={2} align="stretch">
-                {logs.slice(0, 5).map((log) => (
-                  <Box 
-                    key={log.id} 
-                    p={2} 
-                    borderWidth="1px" 
-                    borderRadius="md" 
-                    borderColor={borderColor}
-                  >
-                    <Flex justifyContent="space-between" mb={0.5}>
-                      <Text fontSize="sm" fontWeight="medium" color={getLogColor(log.type)}>
-                        {log.type}
-                      </Text>
-                      <Text fontSize="xs" color="gray.500">
-                        {new Date(log.timestamp).toLocaleTimeString()}
-                      </Text>
-                    </Flex>
-                    <Text fontSize="sm" noOfLines={2}>{log.message}</Text>
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    p: 2, 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column' 
+                  }}
+                >
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Подзадачи
+                  </Typography>
+                  <Typography variant="h5" fontWeight="bold">
+                    {selectedTask.subtasks?.length || 0}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 'auto' }}>
+                    {selectedTask.subtasks?.filter(s => s.status === TaskStatus.COMPLETED).length || 0} завершено
+                  </Typography>
+                </Paper>
+              </Grid>
+              
+              <Grid item xs={6}>
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    p: 2, 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column' 
+                  }}
+                >
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Генерации кода
+                  </Typography>
+                  <Typography variant="h5" fontWeight="bold">
+                    {selectedTask.codeGenerations?.length || 0}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 'auto' }}>
+                    {selectedTask.codeGenerations?.filter(c => c.status === 'approved').length || 0} одобрено
+                  </Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+            
+            <Card variant="outlined">
+              <CardHeader title="Последняя активность" />
+              <Divider />
+              <CardContent sx={{ pt: 0 }}>
+                <List disablePadding>
+                  {logs.slice(0, 5).map((log) => (
+                    <React.Fragment key={log.id}>
+                      <ListItem 
+                        sx={{ 
+                          py: 1.5,
+                          pl: 1,
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                            borderRadius: 1
+                          }
+                        }}
+                      >
+                        <ListItemText
+                          primary={
+                            <Box display="flex" alignItems="center">
+                              {getLogIcon(log.type)}
+                              <Typography 
+                                variant="body2" 
+                                component="span" 
+                                sx={{ ml: 1 }}
+                                color={
+                                  log.type === LogType.ERROR ? 'error.main' :
+                                  log.type === LogType.WARNING ? 'warning.main' :
+                                  log.type === LogType.PROGRESS ? 'success.main' :
+                                  'info.main'
+                                }
+                              >
+                                {log.type}
+                              </Typography>
+                            </Box>
+                          }
+                          secondary={log.message}
+                          secondaryTypographyProps={{
+                            noWrap: true,
+                            style: {
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '100%'
+                            }
+                          }}
+                        />
+                        <ListItemSecondaryAction>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(log.timestamp).toLocaleTimeString()}
+                          </Typography>
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                      <Divider component="li" />
+                    </React.Fragment>
+                  ))}
+                  
+                  {logs.length === 0 && (
+                    <ListItem>
+                      <ListItemText 
+                        primary="Нет активности" 
+                        primaryTypographyProps={{ 
+                          align: 'center', 
+                          color: 'text.secondary' 
+                        }} 
+                      />
+                    </ListItem>
+                  )}
+                </List>
+                
+                {logs.length > 5 && (
+                  <Box textAlign="center" pt={1}>
+                    <Button 
+                      variant="text" 
+                      size="small" 
+                      onClick={() => setTabValue(2)}
+                    >
+                      Показать все логи
+                    </Button>
                   </Box>
-                ))}
-                {logs.length === 0 && (
-                  <Text color="gray.500" textAlign="center">
-                    Нет активности
-                  </Text>
                 )}
-              </VStack>
-            </CardBody>
-          </Card>
-        </GridItem>
+              </CardContent>
+            </Card>
+          </Stack>
+        </Grid>
       </Grid>
     </Box>
   );

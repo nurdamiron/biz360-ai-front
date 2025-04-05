@@ -1,36 +1,34 @@
-// src/components/project/ProjectCard.tsx
 import React from 'react';
 import {
   Box,
-  Heading,
-  Text,
-  Badge,
-  Flex,
-  HStack,
-  VStack,
-  Progress,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  Divider,
-  Button,
-  useColorModeValue,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
+  Card,
+  CardContent,
+  CardActions,
+  Typography,
+  Chip,
   IconButton,
-} from '@chakra-ui/react';
+  LinearProgress,
+  Grid,
+  Divider,
+  Paper,
+  Button,
+  Stack,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Project } from '../../store/slices/projectsSlice';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const ViewIcon = () => <span>👁️</span>;
-const MoreIcon = () => <span>⋮</span>;
-const EditIcon = () => <span>✏️</span>;
-const DeleteIcon = () => <span>🗑️</span>;
+// Иконки Material UI
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import FolderIcon from '@mui/icons-material/Folder';
+import CodeIcon from '@mui/icons-material/Code';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
 
 interface ProjectCardProps {
   project: Project;
@@ -46,10 +44,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   onDelete,
 }) => {
   const navigate = useNavigate();
-  
-  // Цвета
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   
   // Расчет процента выполнения задач
   const completionPercentage = 
@@ -61,13 +56,13 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'green';
+        return 'success';
       case 'inactive':
-        return 'orange';
+        return 'warning';
       case 'archived':
-        return 'gray';
+        return 'default';
       default:
-        return 'blue';
+        return 'info';
     }
   };
   
@@ -85,8 +80,19 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
     }
   };
   
+  // Обработчик открытия меню
+  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  
+  // Обработчик закрытия меню
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+  
   // Обработчики действий
   const handleView = () => {
+    handleMenuClose();
     if (onView) {
       onView(project.id);
     } else {
@@ -95,132 +101,192 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   };
   
   const handleEdit = () => {
+    handleMenuClose();
     if (onEdit) {
       onEdit(project.id);
     }
   };
   
   const handleDelete = () => {
+    handleMenuClose();
     if (onDelete) {
       onDelete(project.id);
     }
   };
   
+  // Получение цвета прогресса
+  const getProgressColor = () => {
+    if (completionPercentage < 30) return 'error';
+    if (completionPercentage < 70) return 'warning';
+    return 'success';
+  };
+  
   return (
-    <Box
-      borderWidth="1px"
-      borderRadius="lg"
-      borderColor={borderColor}
-      overflow="hidden"
-      bg={cardBg}
-      boxShadow="sm"
-      p={4}
-      transition="all 0.2s"
-      _hover={{ boxShadow: 'md' }}
-      width="100%"
-    >
-      <Flex justifyContent="space-between" alignItems="flex-start" mb={3}>
-        <VStack align="flex-start" spacing={1}>
-          <Heading size="md">{project.name}</Heading>
-          <Badge colorScheme={getStatusColor(project.status)}>
-            {getStatusText(project.status)}
-          </Badge>
-        </VStack>
-        
-        <HStack>
-          <IconButton
-            aria-label="View project"
-            icon={<ViewIcon />}
-            size="sm"
-            variant="ghost"
-            onClick={handleView}
-          />
-          
-          <Menu>
-            <MenuButton
-              as={IconButton}
-              aria-label="Options"
-              icon={<MoreIcon />}
-              variant="ghost"
-              size="sm"
+    <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <CardContent sx={{ pb: 1, flexGrow: 1 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+          <Box>
+            <Typography variant="h6" component="div" gutterBottom>
+              {project.name}
+            </Typography>
+            <Chip 
+              label={getStatusText(project.status)} 
+              color={getStatusColor(project.status) as 'success' | 'warning' | 'error' | 'default' | 'info'} 
+              size="small"
             />
-            <MenuList>
-              <MenuItem icon={<ViewIcon />} onClick={handleView}>
-                Открыть проект
+          </Box>
+          <Box display="flex">
+            <IconButton 
+              size="small" 
+              onClick={handleView}
+              aria-label="Просмотреть проект"
+            >
+              <VisibilityIcon />
+            </IconButton>
+            <IconButton
+              size="small"
+              aria-label="Еще"
+              onClick={handleMenuOpen}
+            >
+              <MoreVertIcon />
+            </IconButton>
+            <Menu
+              id="project-menu"
+              anchorEl={anchorEl}
+              keepMounted
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+            >
+              <MenuItem onClick={handleView}>
+                <ListItemIcon>
+                  <VisibilityIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Открыть проект" />
               </MenuItem>
-              <MenuItem icon={<EditIcon />} onClick={handleEdit}>
-                Редактировать
+              <MenuItem onClick={handleEdit}>
+                <ListItemIcon>
+                  <EditIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Редактировать" />
               </MenuItem>
-              <MenuItem icon={<DeleteIcon />} onClick={handleDelete} color="red.500">
-                Удалить
+              <MenuItem onClick={handleDelete}>
+                <ListItemIcon>
+                  <DeleteIcon fontSize="small" color="error" />
+                </ListItemIcon>
+                <ListItemText primary="Удалить" primaryTypographyProps={{ color: 'error' }} />
               </MenuItem>
-            </MenuList>
-          </Menu>
-        </HStack>
-      </Flex>
-      
-      <Text fontSize="sm" noOfLines={2} mb={4} color="gray.600">
-        {project.description}
-      </Text>
-      
-      <Divider mb={4} />
-      
-      <VStack spacing={4} align="stretch">
-        <HStack spacing={4} justify="space-between">
-          <Stat size="sm">
-            <StatLabel fontSize="xs">Всего задач</StatLabel>
-            <StatNumber fontSize="md">{project.tasksCount}</StatNumber>
-          </Stat>
-          
-          <Stat size="sm">
-            <StatLabel fontSize="xs">Активные</StatLabel>
-            <StatNumber fontSize="md">{project.activeTasks}</StatNumber>
-          </Stat>
-          
-          <Stat size="sm">
-            <StatLabel fontSize="xs">Завершенные</StatLabel>
-            <StatNumber fontSize="md">{project.completedTasks}</StatNumber>
-          </Stat>
-        </HStack>
+            </Menu>
+          </Box>
+        </Box>
         
-        <Box>
-          <Flex justify="space-between" mb={1}>
-            <Text fontSize="sm">Прогресс</Text>
-            <Text fontSize="sm">{completionPercentage}%</Text>
-          </Flex>
-          <Progress
-            value={completionPercentage}
-            size="sm"
-            borderRadius="full"
-            colorScheme={completionPercentage < 30 ? 'red' : completionPercentage < 70 ? 'yellow' : 'green'}
+        <Typography 
+          variant="body2" 
+          color="text.secondary" 
+          gutterBottom
+          sx={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            mb: 2,
+            minHeight: '40px'
+          }}
+        >
+          {project.description}
+        </Typography>
+        
+        <Divider sx={{ my: 2 }} />
+        
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={4}>
+            <Paper elevation={0} sx={{ p: 1, bgcolor: 'background.default', textAlign: 'center' }}>
+              <Typography variant="caption" display="block" color="text.secondary">
+                Всего задач
+              </Typography>
+              <Typography variant="body1" fontWeight="medium">
+                {project.tasksCount}
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={4}>
+            <Paper elevation={0} sx={{ p: 1, bgcolor: 'background.default', textAlign: 'center' }}>
+              <Typography variant="caption" display="block" color="text.secondary">
+                Активные
+              </Typography>
+              <Typography variant="body1" fontWeight="medium">
+                {project.activeTasks}
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={4}>
+            <Paper elevation={0} sx={{ p: 1, bgcolor: 'background.default', textAlign: 'center' }}>
+              <Typography variant="caption" display="block" color="text.secondary">
+                Завершенные
+              </Typography>
+              <Typography variant="body1" fontWeight="medium">
+                {project.completedTasks}
+              </Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+        
+        <Box sx={{ mb: 2 }}>
+          <Box display="flex" justifyContent="space-between" mb={0.5}>
+            <Typography variant="body2" color="text.secondary">Прогресс</Typography>
+            <Typography variant="body2" color="text.secondary">{completionPercentage}%</Typography>
+          </Box>
+          <LinearProgress 
+            variant="determinate" 
+            value={completionPercentage} 
+            color={getProgressColor()}
+            sx={{ height: 6, borderRadius: 3 }}
           />
         </Box>
         
         {project.codeStats && (
-          <HStack fontSize="xs" color="gray.500" justify="space-between">
-            <Text>{project.codeStats.totalFiles} файлов</Text>
-            <Text>{project.codeStats.totalLines} строк кода</Text>
-            <HStack>
-              {project.codeStats.languages.slice(0, 3).map((lang, index) => (
-                <Badge key={index} variant="outline" colorScheme="blue" fontSize="xs">
-                  {lang.name} {lang.percentage}%
-                </Badge>
+          <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
+            <Chip 
+              icon={<FolderIcon />} 
+              label={`${project.codeStats.totalFiles} файлов`} 
+              size="small" 
+              variant="outlined" 
+            />
+            <Chip 
+              icon={<CodeIcon />} 
+              label={`${project.codeStats.totalLines} строк`} 
+              size="small" 
+              variant="outlined" 
+            />
+            <Box>
+              {project.codeStats.languages.slice(0, 2).map((lang, index) => (
+                <Chip 
+                  key={index} 
+                  label={`${lang.name} ${lang.percentage}%`} 
+                  size="small" 
+                  color="primary" 
+                  variant="outlined"
+                  sx={{ ml: 0.5 }}
+                />
               ))}
-            </HStack>
-          </HStack>
+            </Box>
+          </Stack>
         )}
-      </VStack>
+      </CardContent>
       
-      <Flex justifyContent="space-between" mt={4}>
-        <Text fontSize="xs" color="gray.500">
+      <CardActions sx={{ justifyContent: 'space-between', bgcolor: 'background.default', pt: 0 }}>
+        <Typography variant="caption" color="text.secondary">
           Создан: {new Date(project.createdAt).toLocaleDateString()}
-        </Text>
-        
-        <Button size="sm" variant="outline" colorScheme="blue" onClick={handleView}>
+        </Typography>
+        <Button 
+          size="small" 
+          variant="outlined" 
+          endIcon={<VisibilityIcon />}
+          onClick={handleView}
+        >
           Подробнее
         </Button>
-      </Flex>
-    </Box>
+      </CardActions>
+    </Card>
   );
 };
 

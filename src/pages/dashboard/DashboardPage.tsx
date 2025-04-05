@@ -1,46 +1,50 @@
-// src/pages/dashboard/DashboardPage.tsx
 import React, { useEffect } from 'react';
 import {
   Box,
-  Heading,
-  SimpleGrid,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  StatArrow,
-  StatGroup,
-  VStack,
-  HStack,
-  Text,
-  Badge,
+  Typography,
   Grid,
-  GridItem,
-  Divider,
-  useColorModeValue,
+  Paper,
+  Button,
   Card,
+  CardContent,
   CardHeader,
-  CardBody,
-  Button
-} from '@chakra-ui/react';
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Avatar,
+  Chip,
+  LinearProgress,
+  useTheme,
+  IconButton,
+  Stack
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchTasks } from '../../store/slices/tasksSlice';
-import TaskProgressCard from '../../components/task/TaskProgressCard';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const AddIcon = () => <span>➕</span>;
+// Импорт иконок
+import AddIcon from '@mui/icons-material/Add';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import PendingIcon from '@mui/icons-material/Pending';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import PersonIcon from '@mui/icons-material/Person';
+import PeopleIcon from '@mui/icons-material/People';
+import DnsIcon from '@mui/icons-material/Dns';
+import WorkIcon from '@mui/icons-material/Work';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WifiIcon from '@mui/icons-material/Wifi';
+
+import TaskProgressCard from '../../components/task/TaskProgressCard';
 
 const DashboardPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const theme = useTheme();
   const { tasks, isLoading } = useAppSelector(state => state.tasks);
   const { user } = useAppSelector(state => state.auth);
-  
-  // Цвета
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
   
   // Загружаем задачи при монтировании
   useEffect(() => {
@@ -67,194 +71,271 @@ const DashboardPage: React.FC = () => {
     navigate('/tasks/new');
   };
   
+  // Стиль для статистических карточек
+  const statCardStyle = {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+  };
+  
   return (
     <Box>
-      <HStack justifyContent="space-between" alignItems="center" mb={6}>
-        <VStack align="flex-start" spacing={1}>
-          <Heading size="lg">Панель управления</Heading>
-          <Text color="gray.500">
-            Обзор проекта и активные задачи
-          </Text>
-        </VStack>
-        
-        <Button 
-          leftIcon={<AddIcon />} 
-          colorScheme="blue" 
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Панель управления
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
           onClick={handleCreateTask}
         >
           Новая задача
         </Button>
-      </HStack>
+      </Box>
       
-      <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} mb={8}>
-        <Stat
-          p={4}
-          bg={cardBg}
-          borderRadius="lg"
-          boxShadow="sm"
-          borderWidth="1px"
-          borderColor={borderColor}
-        >
-          <StatLabel>Всего задач</StatLabel>
-          <StatNumber>{taskStats.all}</StatNumber>
-          <StatHelpText>
-            <Badge colorScheme="blue" borderRadius="full" px={2}>
-              Актуально
-            </Badge>
-          </StatHelpText>
-        </Stat>
+      <Grid container spacing={3} mb={4}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper elevation={1} sx={statCardStyle}>
+            <CardContent>
+              <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                Всего задач
+              </Typography>
+              <Typography variant="h4">
+                {taskStats.all}
+              </Typography>
+              <Box mt={1}>
+                <Chip 
+                  label="Актуально" 
+                  color="primary" 
+                  size="small" 
+                  icon={<TaskAltIcon />} 
+                />
+              </Box>
+            </CardContent>
+          </Paper>
+        </Grid>
         
-        <Stat
-          p={4}
-          bg={cardBg}
-          borderRadius="lg"
-          boxShadow="sm"
-          borderWidth="1px"
-          borderColor={borderColor}
-        >
-          <StatLabel>Активные задачи</StatLabel>
-          <StatNumber>{taskStats.active}</StatNumber>
-          <StatHelpText>
-            <StatArrow type={taskStats.active > 2 ? 'increase' : 'decrease'} />
-            {taskStats.active > 2 ? 'Высокая активность' : 'Нормальная активность'}
-          </StatHelpText>
-        </Stat>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper elevation={1} sx={statCardStyle}>
+            <CardContent>
+              <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                Активные задачи
+              </Typography>
+              <Typography variant="h4">
+                {taskStats.active}
+              </Typography>
+              <Box mt={1}>
+                <Chip 
+                  label={taskStats.active > 2 ? "Высокая активность" : "Нормальная активность"} 
+                  color="warning" 
+                  size="small" 
+                  icon={<PendingIcon />} 
+                />
+              </Box>
+            </CardContent>
+          </Paper>
+        </Grid>
         
-        <Stat
-          p={4}
-          bg={cardBg}
-          borderRadius="lg"
-          boxShadow="sm"
-          borderWidth="1px"
-          borderColor={borderColor}
-        >
-          <StatLabel>Завершенные задачи</StatLabel>
-          <StatNumber>{taskStats.completed}</StatNumber>
-          <StatHelpText>
-            <Badge colorScheme="green" borderRadius="full" px={2}>
-              Успешно
-            </Badge>
-          </StatHelpText>
-        </Stat>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper elevation={1} sx={statCardStyle}>
+            <CardContent>
+              <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                Завершенные задачи
+              </Typography>
+              <Typography variant="h4">
+                {taskStats.completed}
+              </Typography>
+              <Box mt={1}>
+                <Chip 
+                  label="Успешно" 
+                  color="success" 
+                  size="small" 
+                  icon={<CheckCircleIcon />} 
+                />
+              </Box>
+            </CardContent>
+          </Paper>
+        </Grid>
         
-        <Stat
-          p={4}
-          bg={cardBg}
-          borderRadius="lg"
-          boxShadow="sm"
-          borderWidth="1px"
-          borderColor={borderColor}
-        >
-          <StatLabel>Проблемные задачи</StatLabel>
-          <StatNumber>{taskStats.failed}</StatNumber>
-          <StatHelpText>
-            <Badge colorScheme="red" borderRadius="full" px={2}>
-              Требуют внимания
-            </Badge>
-          </StatHelpText>
-        </Stat>
-      </SimpleGrid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper elevation={1} sx={statCardStyle}>
+            <CardContent>
+              <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                Проблемные задачи
+              </Typography>
+              <Typography variant="h4">
+                {taskStats.failed}
+              </Typography>
+              <Box mt={1}>
+                <Chip 
+                  label="Требуют внимания" 
+                  color="error" 
+                  size="small" 
+                  icon={<ErrorOutlineIcon />} 
+                />
+              </Box>
+            </CardContent>
+          </Paper>
+        </Grid>
+      </Grid>
       
-      <Grid 
-        templateColumns={{ base: '1fr', lg: '2fr 1fr' }} 
-        gap={6}
-      >
-        <GridItem>
-          <Card borderColor={borderColor} boxShadow="sm">
-            <CardHeader>
-              <Heading size="md">Активные задачи</Heading>
-            </CardHeader>
-            <CardBody>
-              <VStack spacing={4} align="stretch">
+      <Grid container spacing={3}>
+        <Grid item xs={12} lg={8}>
+          <Card>
+            <CardHeader 
+              title="Активные задачи" 
+              action={
+                <Button 
+                  endIcon={<ArrowForwardIcon />} 
+                  onClick={() => navigate('/tasks')}
+                  color="primary"
+                >
+                  Все задачи
+                </Button>
+              }
+            />
+            <Divider />
+            <CardContent>
+              <Stack spacing={2}>
                 {isLoading ? (
-                  <Text>Загрузка задач...</Text>
+                  <Box py={4}>
+                    <LinearProgress />
+                    <Typography variant="body2" align="center" sx={{ mt: 2 }}>
+                      Загрузка задач...
+                    </Typography>
+                  </Box>
                 ) : activeTasks.length > 0 ? (
                   activeTasks.map(task => (
                     <TaskProgressCard key={task.id} task={task} showDetailedLogs />
                   ))
                 ) : (
-                  <Text color="gray.500">Активных задач нет</Text>
-                )}
-              </VStack>
-            </CardBody>
-          </Card>
-        </GridItem>
-        
-        <GridItem>
-          <Card borderColor={borderColor} boxShadow="sm">
-            <CardHeader>
-              <Heading size="md">Последние обновления</Heading>
-            </CardHeader>
-            <CardBody>
-              <VStack spacing={4} align="stretch">
-                {isLoading ? (
-                  <Text>Загрузка обновлений...</Text>
-                ) : recentTasks.length > 0 ? (
-                  recentTasks.map(task => (
-                    <HStack 
-                      key={task.id} 
-                      p={3} 
-                      borderWidth="1px" 
-                      borderRadius="md" 
-                      borderColor={borderColor}
-                      justifyContent="space-between"
+                  <Box textAlign="center" py={4}>
+                    <Typography variant="body1" color="textSecondary">
+                      Активных задач нет
+                    </Typography>
+                    <Button 
+                      variant="outlined" 
+                      color="primary" 
+                      startIcon={<AddIcon />} 
+                      onClick={handleCreateTask}
+                      sx={{ mt: 2 }}
                     >
-                      <VStack align="flex-start" spacing={0}>
-                        <Text fontWeight="medium">{task.title}</Text>
-                        <HStack>
-                          <Badge colorScheme={task.status === 'completed' ? 'green' : task.status === 'failed' ? 'red' : 'blue'}>
-                            {task.status}
-                          </Badge>
-                          <Text fontSize="xs" color="gray.500">
-                            {new Date(task.updatedAt).toLocaleDateString()}
-                          </Text>
-                        </HStack>
-                      </VStack>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => navigate(`/tasks/${task.id}`)}
-                      >
-                        Просмотр
-                      </Button>
-                    </HStack>
-                  ))
-                ) : (
-                  <Text color="gray.500">Нет последних обновлений</Text>
+                      Создать задачу
+                    </Button>
+                  </Box>
                 )}
-              </VStack>
-            </CardBody>
+              </Stack>
+            </CardContent>
           </Card>
-          
-          <Card mt={6} borderColor={borderColor} boxShadow="sm">
-            <CardHeader>
-              <Heading size="md">Информация о системе</Heading>
-            </CardHeader>
-            <CardBody>
-              <VStack spacing={3} align="stretch">
-                <HStack justifyContent="space-between">
-                  <Text fontWeight="medium">Пользователь:</Text>
-                  <Text>{user?.username || 'Неизвестно'}</Text>
-                </HStack>
+        </Grid>
+        
+        <Grid item xs={12} lg={4}>
+          <Grid container spacing={3} direction="column">
+            <Grid item xs={12}>
+              <Card>
+                <CardHeader title="Последние обновления" />
                 <Divider />
-                <HStack justifyContent="space-between">
-                  <Text fontWeight="medium">Роль:</Text>
-                  <Badge colorScheme="purple">{user?.role || 'Гость'}</Badge>
-                </HStack>
+                <List>
+                  {isLoading ? (
+                    <Box py={2}>
+                      <LinearProgress />
+                    </Box>
+                  ) : recentTasks.length > 0 ? (
+                    recentTasks.map(task => (
+                      <React.Fragment key={task.id}>
+                        <ListItem button onClick={() => navigate(`/tasks/${task.id}`)}>
+                          <ListItemText
+                            primary={task.title}
+                            secondary={new Date(task.updatedAt).toLocaleDateString()}
+                          />
+                          <ListItemSecondaryAction>
+                            <Chip 
+                              label={task.status} 
+                              size="small" 
+                              color={
+                                task.status === 'completed' ? 'success' : 
+                                task.status === 'failed' ? 'error' : 
+                                'primary'
+                              }
+                            />
+                          </ListItemSecondaryAction>
+                        </ListItem>
+                        <Divider component="li" />
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    <ListItem>
+                      <ListItemText 
+                        primary="Нет последних обновлений" 
+                        primaryTypographyProps={{ color: 'textSecondary' }}
+                      />
+                    </ListItem>
+                  )}
+                </List>
+              </Card>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Card>
+                <CardHeader title="Информация о системе" />
                 <Divider />
-                <HStack justifyContent="space-between">
-                  <Text fontWeight="medium">Статус ИИ:</Text>
-                  <Badge colorScheme="green">Активен</Badge>
-                </HStack>
-                <Divider />
-                <HStack justifyContent="space-between">
-                  <Text fontWeight="medium">Версия:</Text>
-                  <Text>1.0.0-beta</Text>
-                </HStack>
-              </VStack>
-            </CardBody>
-          </Card>
-        </GridItem>
+                <List disablePadding>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Пользователь" 
+                      secondary={user?.username || 'Неизвестно'} 
+                    />
+                    <ListItemSecondaryAction>
+                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                        <PersonIcon fontSize="small" />
+                      </Avatar>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                  <Divider component="li" />
+                  
+                  <ListItem>
+                    <ListItemText 
+                      primary="Роль" 
+                      secondary={user?.role || 'Гость'} 
+                    />
+                    <ListItemSecondaryAction>
+                      <Chip 
+                        label={user?.role || 'Гость'}
+                        size="small" 
+                        color="secondary" 
+                      />
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                  <Divider component="li" />
+                  
+                  <ListItem>
+                    <ListItemText 
+                      primary="Статус ИИ" 
+                      secondary="Активен" 
+                    />
+                    <ListItemSecondaryAction>
+                      <Chip 
+                        label="Активен"
+                        size="small" 
+                        color="success" 
+                        icon={<WifiIcon />}
+                      />
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                  <Divider component="li" />
+                  
+                  <ListItem>
+                    <ListItemText 
+                      primary="Версия" 
+                      secondary="1.0.0-beta" 
+                    />
+                  </ListItem>
+                </List>
+              </Card>
+            </Grid>
+          </Grid>
+        </Grid>
       </Grid>
     </Box>
   );

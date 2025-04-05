@@ -1,43 +1,32 @@
-// src/pages/projects/ProjectsPage.tsx
 import React, { useEffect, useState } from 'react';
 import {
   Box,
-  Heading,
-  Text,
+  Typography,
   Button,
-  SimpleGrid,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  Flex,
-  Select,
-  VStack,
-  HStack,
-  useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
+  Grid,
+  TextField,
+  InputAdornment,
   FormControl,
-  FormLabel,
-  Textarea,
-  Spinner,
-  useToast,
-  FormErrorMessage,
-  Badge,
-  Menu,
-  MenuButton,
-  MenuList,
+  InputLabel,
+  Select,
   MenuItem,
-  IconButton,
-  useColorModeValue,
   Card,
-  CardBody,
-} from '@chakra-ui/react';
+  CardContent,
+  Chip,
+  Skeleton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormHelperText,
+  Paper,
+  Stack,
+  CircularProgress,
+  SelectChangeEvent,
+  IconButton
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useSnackbar } from 'notistack';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { 
   fetchProjects, 
@@ -46,17 +35,17 @@ import {
 } from '../../store/slices/projectsSlice';
 import ProjectCard from '../../components/project/ProjectCard';
 
-// Иконки (доступны через react-icons)
-// В этом шаблоне используем условные имена, которые нужно заменить на реальные импорты
-const AddIcon = () => <span>➕</span>;
-const SearchIcon = () => <span>🔍</span>;
-const FilterIcon = () => <span>🔎</span>;
+// Импорт иконок
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import FilterListOffIcon from '@mui/icons-material/FilterListOff';
 
 const ProjectsPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
   const { projects, isLoading } = useAppSelector(state => state.projects);
-  const toast = useToast();
   
   // Состояние для фильтров
   const [filters, setFilters] = useState<ProjectFilterParams>({
@@ -78,17 +67,14 @@ const ProjectsPage: React.FC = () => {
     description: ''
   });
   
+  // Состояние для диалога создания проекта
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
   // Состояние для ошибок валидации
   const [validationErrors, setValidationErrors] = useState({
     name: '',
     description: ''
   });
-  
-  // Управление модальным окном создания проекта
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  
-  // Цвета
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
   
   // Загружаем проекты при монтировании и при изменении фильтров
   useEffect(() => {
@@ -108,7 +94,7 @@ const ProjectsPage: React.FC = () => {
   }, [dispatch, filters, searchTerm, statusFilter]);
   
   // Обработчик изменения сортировки
-  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleSortChange = (e: SelectChangeEvent) => {
     const value = e.target.value;
     
     // Разбиваем значение на поле и порядок (например, "updatedAt_desc")
@@ -123,7 +109,7 @@ const ProjectsPage: React.FC = () => {
   };
   
   // Обработчик изменения количества элементов на странице
-  const handleLimitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleLimitChange = (e: SelectChangeEvent) => {
     setFilters({
       ...filters,
       limit: Number(e.target.value),
@@ -143,7 +129,7 @@ const ProjectsPage: React.FC = () => {
   };
   
   // Обработчик изменения фильтра по статусу
-  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleStatusFilterChange = (e: SelectChangeEvent) => {
     setStatusFilter(e.target.value);
   };
   
@@ -157,6 +143,18 @@ const ProjectsPage: React.FC = () => {
       sortBy: 'updatedAt',
       sortOrder: 'desc'
     });
+  };
+  
+  // Обработчик открытия диалога создания проекта
+  const handleOpenDialog = () => {
+    setDialogOpen(true);
+  };
+  
+  // Обработчик закрытия диалога создания проекта
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setNewProject({ name: '', description: '' });
+    setValidationErrors({ name: '', description: '' });
   };
   
   // Обработчик создания нового проекта
@@ -183,28 +181,13 @@ const ProjectsPage: React.FC = () => {
     try {
       const result = await dispatch(createProject(newProject)).unwrap();
       
-      // Закрываем модальное окно
-      onClose();
-      
-      // Очищаем форму
-      setNewProject({
-        name: '',
-        description: ''
-      });
-      
-      // Сбрасываем ошибки валидации
-      setValidationErrors({
-        name: '',
-        description: ''
-      });
+      // Закрываем диалог создания проекта
+      handleCloseDialog();
       
       // Показываем уведомление об успешном создании
-      toast({
-        title: 'Проект создан',
-        description: `Проект "${result.name}" успешно создан`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
+      enqueueSnackbar(`Проект "${result.name}" успешно создан`, { 
+        variant: 'success',
+        autoHideDuration: 3000
       });
       
       // Если проект создан успешно, переходим на страницу с деталями
@@ -212,12 +195,9 @@ const ProjectsPage: React.FC = () => {
         navigate(`/projects/${result.id}`);
       }
     } catch (error) {
-      toast({
-        title: 'Ошибка',
-        description: error instanceof Error ? error.message : 'Произошла ошибка при создании проекта',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
+      enqueueSnackbar(error instanceof Error ? error.message : 'Произошла ошибка при создании проекта', { 
+        variant: 'error',
+        autoHideDuration: 3000
       });
     }
   };
@@ -227,215 +207,259 @@ const ProjectsPage: React.FC = () => {
     navigate(`/projects/${id}`);
   };
   
-  // Обработчик редактирования проекта (заглушка)
+  // Обработчик редактирования проекта
   const handleEditProject = (id: number) => {
-    toast({
-      title: 'Редактирование проекта',
-      description: `Функция редактирования проекта #${id} будет доступна в следующей версии`,
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
+    enqueueSnackbar(`Функция редактирования проекта #${id} будет доступна в следующей версии`, { 
+      variant: 'info',
+      autoHideDuration: 3000
     });
   };
   
-  // Обработчик удаления проекта (заглушка)
+  // Обработчик удаления проекта
   const handleDeleteProject = (id: number) => {
-    toast({
-      title: 'Удаление проекта',
-      description: `Функция удаления проекта #${id} будет доступна в следующей версии`,
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
+    enqueueSnackbar(`Функция удаления проекта #${id} будет доступна в следующей версии`, { 
+      variant: 'info',
+      autoHideDuration: 3000
     });
+  };
+  
+  // Отрисовка скелетона загрузки
+  const renderSkeletons = () => {
+    return Array(6).fill(0).map((_, index) => (
+      <Grid item xs={12} sm={6} md={4} key={`skeleton-${index}`}>
+        <Card variant="outlined">
+          <CardContent>
+            <Skeleton variant="text" width="60%" height={40} />
+            <Skeleton variant="text" width="40%" height={30} sx={{ mb: 2 }} />
+            <Skeleton variant="rectangular" height={80} sx={{ mb: 2 }} />
+            <Skeleton variant="text" width="100%" height={30} />
+            <Skeleton variant="text" width="100%" height={30} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+              <Skeleton variant="text" width="30%" height={30} />
+              <Skeleton variant="rectangular" width="30%" height={30} />
+            </Box>
+          </CardContent>
+        </Card>
+      </Grid>
+    ));
   };
   
   return (
     <Box>
-      <Flex justifyContent="space-between" alignItems="center" mb={6}>
-        <VStack align="flex-start" spacing={1}>
-          <Heading size="lg">Проекты</Heading>
-          <Text color="gray.500">
-            Управление проектами для ИИ-ассистента
-          </Text>
-        </VStack>
-        
-        <Button 
-          leftIcon={<AddIcon />} 
-          colorScheme="blue" 
-          onClick={onOpen}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Проекты
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={handleOpenDialog}
         >
           Новый проект
         </Button>
-      </Flex>
+      </Box>
       
-      <Card borderColor={borderColor} boxShadow="sm" mb={6}>
-        <CardBody>
-          <Flex 
-            direction={{ base: 'column', md: 'row' }} 
-            justify="space-between" 
-            align={{ base: 'stretch', md: 'center' }}
-            gap={4}
-          >
-            <form onSubmit={handleSearchSubmit} style={{ flex: 1 }}>
-              <InputGroup>
-                <InputLeftElement pointerEvents="none">
-                  <SearchIcon />
-                </InputLeftElement>
-                <Input 
-                  placeholder="Поиск проектов..." 
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                />
-              </InputGroup>
+      <Paper elevation={0} variant="outlined" sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <form onSubmit={handleSearchSubmit}>
+              <TextField
+                fullWidth
+                placeholder="Поиск проектов..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
             </form>
-            
-            <HStack spacing={2}>
-              <Select 
-                width="auto" 
-                size="md" 
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="status-filter-label">Статус</InputLabel>
+              <Select
+                labelId="status-filter-label"
                 value={statusFilter}
                 onChange={handleStatusFilterChange}
-                placeholder="Все статусы"
+                label="Статус"
               >
-                <option value="active">Активные</option>
-                <option value="inactive">Неактивные</option>
-                <option value="archived">Архивированные</option>
+                <MenuItem value="">Все статусы</MenuItem>
+                <MenuItem value="active">Активные</MenuItem>
+                <MenuItem value="inactive">Неактивные</MenuItem>
+                <MenuItem value="archived">Архивированные</MenuItem>
               </Select>
-              
-              <Select 
-                width="auto" 
-                size="md" 
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="sort-filter-label">Сортировка</InputLabel>
+              <Select
+                labelId="sort-filter-label"
                 value={`${filters.sortBy}_${filters.sortOrder}`}
                 onChange={handleSortChange}
+                label="Сортировка"
               >
-                <option value="updatedAt_desc">Последние обновления</option>
-                <option value="createdAt_desc">Новые первыми</option>
-                <option value="createdAt_asc">Старые первыми</option>
-                <option value="name_asc">По имени (А-Я)</option>
-                <option value="name_desc">По имени (Я-А)</option>
+                <MenuItem value="updatedAt_desc">Последние обновления</MenuItem>
+                <MenuItem value="createdAt_desc">Новые первыми</MenuItem>
+                <MenuItem value="createdAt_asc">Старые первыми</MenuItem>
+                <MenuItem value="name_asc">По имени (А-Я)</MenuItem>
+                <MenuItem value="name_desc">По имени (Я-А)</MenuItem>
               </Select>
-              
-              <Select 
-                width="auto" 
-                size="md" 
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="limit-filter-label">Показывать</InputLabel>
+              <Select
+                labelId="limit-filter-label"
                 value={filters.limit.toString()}
                 onChange={handleLimitChange}
+                label="Показывать"
               >
-                <option value="5">5 на странице</option>
-                <option value="10">10 на странице</option>
-                <option value="20">20 на странице</option>
-                <option value="50">50 на странице</option>
+                <MenuItem value="5">5 на странице</MenuItem>
+                <MenuItem value="10">10 на странице</MenuItem>
+                <MenuItem value="20">20 на странице</MenuItem>
+                <MenuItem value="50">50 на странице</MenuItem>
               </Select>
-            </HStack>
-          </Flex>
+            </FormControl>
+          </Grid>
           
-          {/* Индикаторы активных фильтров */}
-          {(statusFilter || searchTerm) && (
-            <Flex wrap="wrap" gap={2} mt={4}>
-              {searchTerm && (
-                <Badge colorScheme="blue" borderRadius="full" px={2} py={1}>
-                  Поиск: {searchTerm}
-                </Badge>
-              )}
-              
-              {statusFilter && (
-                <Badge colorScheme="purple" borderRadius="full" px={2} py={1}>
-                  Статус: {statusFilter}
-                </Badge>
-              )}
-              
-              <Button 
-                size="xs" 
-                variant="ghost" 
-                onClick={handleResetFilters}
-              >
-                Сбросить все
-              </Button>
-            </Flex>
-          )}
-        </CardBody>
-      </Card>
+          <Grid item xs={12} sm={6} md={1}>
+            <IconButton 
+              color="primary" 
+              onClick={handleResetFilters}
+              title="Сбросить фильтры"
+              aria-label="Сбросить фильтры"
+            >
+              <FilterListOffIcon />
+            </IconButton>
+          </Grid>
+        </Grid>
+        
+        {/* Индикаторы активных фильтров */}
+        {(statusFilter || searchTerm) && (
+          <Stack direction="row" spacing={1} mt={2}>
+            {searchTerm && (
+              <Chip 
+                label={`Поиск: ${searchTerm}`} 
+                color="primary" 
+                onDelete={() => setSearchTerm('')} 
+              />
+            )}
+            
+            {statusFilter && (
+              <Chip 
+                label={`Статус: ${statusFilter}`} 
+                color="secondary" 
+                onDelete={() => setStatusFilter('')} 
+              />
+            )}
+          </Stack>
+        )}
+      </Paper>
       
       {isLoading ? (
-        <Flex justify="center" align="center" p={10}>
-          <Spinner size="xl" />
-        </Flex>
+        <Grid container spacing={3}>
+          {renderSkeletons()}
+        </Grid>
       ) : projects.length > 0 ? (
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+        <Grid container spacing={3}>
           {projects.map(project => (
-            <ProjectCard 
-              key={project.id} 
-              project={project} 
-              onView={handleViewProject}
-              onEdit={handleEditProject}
-              onDelete={handleDeleteProject}
-            />
+            <Grid item xs={12} sm={6} md={4} key={project.id}>
+              <ProjectCard 
+                project={project} 
+                onView={handleViewProject}
+                onEdit={handleEditProject}
+                onDelete={handleDeleteProject}
+              />
+            </Grid>
           ))}
-        </SimpleGrid>
+        </Grid>
       ) : (
-        <Box p={10} textAlign="center">
-          <Text fontSize="lg" color="gray.500">
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
             Проекты не найдены
-          </Text>
-          <Text color="gray.500" mt={2}>
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
             Попробуйте изменить параметры фильтрации или создайте новый проект
-          </Text>
+          </Typography>
           <Button 
-            mt={4} 
-            colorScheme="blue" 
-            leftIcon={<AddIcon />} 
-            onClick={onOpen}
+            variant="contained" 
+            color="primary" 
+            startIcon={<AddIcon />} 
+            onClick={handleOpenDialog}
+            sx={{ mt: 2 }}
           >
             Создать проект
           </Button>
-        </Box>
+        </Paper>
       )}
       
-      {/* Модальное окно создания проекта */}
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Создание нового проекта</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack spacing={4}>
-              <FormControl isRequired isInvalid={!!validationErrors.name}>
-                <FormLabel>Название проекта</FormLabel>
-                <Input 
-                  placeholder="Введите название проекта" 
-                  value={newProject.name}
-                  onChange={(e) => setNewProject({...newProject, name: e.target.value})}
-                />
-                {validationErrors.name && (
-                  <FormErrorMessage>{validationErrors.name}</FormErrorMessage>
-                )}
-              </FormControl>
-              
-              <FormControl isRequired isInvalid={!!validationErrors.description}>
-                <FormLabel>Описание проекта</FormLabel>
-                <Textarea 
-                  placeholder="Введите описание проекта..." 
-                  rows={5}
-                  value={newProject.description}
-                  onChange={(e) => setNewProject({...newProject, description: e.target.value})}
-                />
-                {validationErrors.description && (
-                  <FormErrorMessage>{validationErrors.description}</FormErrorMessage>
-                )}
-              </FormControl>
-            </VStack>
-          </ModalBody>
+      {/* Диалог создания проекта */}
+      <Dialog 
+        open={dialogOpen} 
+        onClose={handleCloseDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Создание нового проекта</DialogTitle>
+        <DialogContent>
+          <FormControl 
+            fullWidth 
+            error={!!validationErrors.name}
+            margin="normal"
+          >
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Название проекта"
+              fullWidth
+              variant="outlined"
+              value={newProject.name}
+              onChange={(e) => setNewProject({...newProject, name: e.target.value})}
+              error={!!validationErrors.name}
+              helperText={validationErrors.name}
+            />
+          </FormControl>
           
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onClose}>
-              Отмена
-            </Button>
-            <Button colorScheme="blue" onClick={handleCreateProject}>
-              Создать проект
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          <FormControl 
+            fullWidth 
+            error={!!validationErrors.description}
+            margin="normal"
+          >
+            <TextField
+              margin="dense"
+              label="Описание проекта"
+              fullWidth
+              multiline
+              rows={4}
+              variant="outlined"
+              value={newProject.description}
+              onChange={(e) => setNewProject({...newProject, description: e.target.value})}
+              error={!!validationErrors.description}
+              helperText={validationErrors.description}
+            />
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="inherit">
+            Отмена
+          </Button>
+          <Button onClick={handleCreateProject} color="primary" variant="contained">
+            Создать проект
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

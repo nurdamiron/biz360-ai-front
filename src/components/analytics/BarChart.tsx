@@ -1,16 +1,15 @@
-// src/components/analytics/BarChart.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  Card,
+  CardContent,
+  Typography,
   Box,
-  useColorModeValue,
-  Flex,
-  Text,
-  VStack,
-  Badge,
-  Tooltip
-} from '@chakra-ui/react';
+  useTheme,
+  alpha,
+  Tooltip as MuiTooltip
+} from '@mui/material';
 
-// Данные для графика
+// Интерфейс для данных диаграммы
 export interface BarData {
   label: string;
   value: number;
@@ -18,10 +17,10 @@ export interface BarData {
 }
 
 interface BarChartProps {
-  data: BarData[];
   title: string;
   description?: string;
-  height?: number | string;
+  data: BarData[];
+  height?: number;
   valuePrefix?: string;
   valueSuffix?: string;
   defaultColor?: string;
@@ -34,23 +33,28 @@ interface BarChartProps {
 }
 
 const BarChart: React.FC<BarChartProps> = ({
-  data,
   title,
   description,
-  height = 200,
+  data,
+  height = 300,
   valuePrefix = '',
   valueSuffix = '',
-  defaultColor = 'blue.500',
+  defaultColor,
   showLabels = true,
   showValues = true,
-  showTotal = true,
+  showTotal = false,
   minValue,
   maxValue,
   horizontal = false
 }) => {
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const labelColor = useColorModeValue('gray.500', 'gray.400');
+  const theme = useTheme();
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  
+  // Используем цвет из темы, если не указан
+  const barColor = defaultColor || theme.palette.primary.main;
+  
+  // Вычисляем общую сумму
+  const total = data.reduce((sum, item) => sum + item.value, 0);
   
   // Определяем минимальное и максимальное значение из данных
   const min = minValue !== undefined 
@@ -59,163 +63,280 @@ const BarChart: React.FC<BarChartProps> = ({
   
   const max = maxValue !== undefined 
     ? maxValue 
-    : Math.max(...data.map(d => d.value));
+    : Math.max(...data.map(d => d.value), 0);
   
-  // Вычисляем итоговую сумму
-  const total = data.reduce((sum, item) => sum + item.value, 0);
+  // Отступы для диаграммы
+  const padding = horizontal ? { top: 10, right: 20, bottom: 10, left: 100 } 
+                            : { top: 20, right: 10, bottom: 40, left: 40 };
   
-  // Функция для получения размера столбца (в процентах)
+  // Вычисляем размеры диаграммы
+  const chartWidth = horizontal ? 
+    500 - padding.left - padding.right : 
+    100 * data.length;
+  
+  const chartHeight = horizontal ? 
+    30 * data.length : 
+    height - padding.top - padding.bottom;
+  
+  // Вычисляем размер столбца в зависимости от ориентации
+  const barSize = horizontal ? 
+    chartHeight / data.length - 5 : // Горизонтальные полосы
+    chartWidth / data.length - 10;  // Вертикальные столбцы
+  
+  // Функция для получения размера столбца (в пикселях)
   const getBarSize = (value: number) => {
     if (max === min) return 0; // Избегаем деления на ноль
-    return ((value - min) / (max - min)) * 100;
+    const size = ((value - min) / (max - min)) * (horizontal ? chartWidth : chartHeight);
+    return Math.max(size, 0); // Убеждаемся, что размер не отрицательный
   };
   
-  return (
-    <Box
-      bg={bgColor}
-      borderRadius="lg"
-      borderWidth="1px"
-      borderColor={borderColor}
-      p={4}
-      boxShadow="sm"
-      width="100%"
-    >
-      <Flex justifyContent="space-between" alignItems="baseline" mb={2}>
-        <VStack align="start" spacing={0}>
-          <Text fontWeight="medium" fontSize="md">{title}</Text>
-          {description && (
-            <Text fontSize="xs" color={labelColor}>{description}</Text>
-          )}
-        </VStack>
-        {showTotal && (
-          <Flex alignItems="center">
-            <Text fontWeight="bold" fontSize="lg">
-              {valuePrefix}{total.toLocaleString()}{valueSuffix}
-            </Text>
-            <Badge ml={2} colorScheme="blue" borderRadius="full" px={2}>
-              Всего
-            </Badge>
-          </Flex>
-        )}
-      </Flex>
+  // Создаем столбцы/полосы для диаграммы
+  const createBars = () => {
+    return data.map((item, index) => {
+      const isActive = activeIndex === index;
+      const itemColor = item.color || barColor;
       
-      <Box 
-        height={height} 
-        mt={4}
-        position="relative"
-      >
-        {horizontal ? (
-          // Горизонтальный бар-чарт
-          <VStack spacing={3} alignItems="stretch" height="100%">
-            {data.map((item, index) => (
-              <Flex key={index} alignItems="center" height={`${100 / data.length}%`}>
-                {showLabels && (
-                  <Text 
-                    width="20%" 
-                    textAlign="right" 
-                    pr={2} 
-                    fontSize="xs" 
-                    color={labelColor}
-                    isTruncated
-                  >
-                    {item.label}
-                  </Text>
-                )}
-                <Box width="70%" position="relative">
-                  <Tooltip 
-                    label={`${item.label}: ${valuePrefix}${item.value.toLocaleString()}${valueSuffix}`} 
-                    placement="top"
-                    hasArrow
-                  >
-                    <Box
-                      height="70%"
-                      width={`${getBarSize(item.value)}%`}
-                      bg={item.color || defaultColor}
-                      borderRadius="sm"
-                      transition="width 0.3s ease"
-                      _hover={{ opacity: 0.8 }}
-                    />
-                  </Tooltip>
-                </Box>
-                {showValues && (
-                  <Text 
-                    width="10%" 
-                    pl={2} 
-                    fontSize="xs" 
-                    fontWeight="medium"
-                  >
-                    {valuePrefix}{item.value.toLocaleString()}{valueSuffix}
-                  </Text>
-                )}
-              </Flex>
-            ))}
-          </VStack>
-        ) : (
-          // Вертикальный бар-чарт
-          <Flex 
-            height="100%" 
-            alignItems="flex-end" 
-            justifyContent="space-between"
-            position="relative"
-          >
-            {/* Линии сетки (горизонтальные) */}
-            {[0, 25, 50, 75, 100].map(percent => (
-              <Box
-                key={percent}
-                position="absolute"
-                bottom={`${percent}%`}
-                left={0}
-                right={0}
-                height="1px"
-                bg={borderColor}
-                opacity={percent === 0 ? 0 : 0.5}
-              />
-            ))}
+      // Размер столбца/полосы
+      const size = getBarSize(item.value);
+      
+      if (horizontal) {
+        // Горизонтальные полосы
+        const y = index * (barSize + 5);
+        return (
+          <g key={index}>
+            <rect
+              x={0}
+              y={y}
+              width={size}
+              height={barSize}
+              fill={isActive ? alpha(itemColor, 0.8) : itemColor}
+              onMouseEnter={() => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex(null)}
+              style={{ transition: 'all 0.3s ease' }}
+            />
             
-            {data.map((item, index) => (
-              <VStack key={index} spacing={1} width={`${90 / data.length}%`}>
-                <Tooltip 
-                  label={`${item.label}: ${valuePrefix}${item.value.toLocaleString()}${valueSuffix}`} 
-                  placement="top"
-                  hasArrow
-                >
-                  <Box
-                    width="100%"
-                    height={`${getBarSize(item.value)}%`}
-                    bg={item.color || defaultColor}
-                    borderRadius="sm"
-                    transition="height 0.3s ease"
-                    _hover={{ opacity: 0.8 }}
-                    cursor="pointer"
-                  />
-                </Tooltip>
-                {showLabels && (
-                  <Text 
-                    fontSize="xs" 
-                    color={labelColor}
-                    textAlign="center"
-                    isTruncated
-                  >
-                    {item.label}
-                  </Text>
-                )}
-                {showValues && (
-                  <Text 
-                    fontSize="xs" 
-                    fontWeight="medium"
-                    position="absolute"
-                    bottom={`${getBarSize(item.value) + 2}%`}
-                    transform="translateY(-100%)"
-                  >
-                    {item.value}
-                  </Text>
-                )}
-              </VStack>
-            ))}
-          </Flex>
-        )}
-      </Box>
-    </Box>
+            {showLabels && (
+              <text
+                x={-5}
+                y={y + barSize / 2}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fontSize={12}
+                fill={theme.palette.text.primary}
+              >
+                {item.label}
+              </text>
+            )}
+            
+            {showValues && (
+              <text
+                x={size + 5}
+                y={y + barSize / 2}
+                dominantBaseline="middle"
+                fontSize={12}
+                fill={theme.palette.text.primary}
+              >
+                {valuePrefix}{item.value.toLocaleString()}{valueSuffix}
+              </text>
+            )}
+          </g>
+        );
+      } else {
+        // Вертикальные столбцы
+        const x = index * (barSize + 10) + 5;
+        return (
+          <g key={index}>
+            <rect
+              x={x}
+              y={chartHeight - size}
+              width={barSize}
+              height={size}
+              fill={isActive ? alpha(itemColor, 0.8) : itemColor}
+              onMouseEnter={() => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex(null)}
+              style={{ transition: 'all 0.3s ease' }}
+            />
+            
+            {showLabels && (
+              <text
+                x={x + barSize / 2}
+                y={chartHeight + 15}
+                textAnchor="middle"
+                fontSize={11}
+                fill={theme.palette.text.secondary}
+                style={{
+                  maxWidth: barSize,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {item.label.length > 10 ? item.label.substring(0, 10) + '...' : item.label}
+              </text>
+            )}
+            
+            {showValues && (
+              <text
+                x={x + barSize / 2}
+                y={chartHeight - size - 5}
+                textAnchor="middle"
+                fontSize={12}
+                fill={theme.palette.text.primary}
+              >
+                {valuePrefix}{item.value.toLocaleString()}{valueSuffix}
+              </text>
+            )}
+          </g>
+        );
+      }
+    });
+  };
+  
+  // Создаем линии сетки для оси Y (только для вертикальных столбцов)
+  const createYGridLines = () => {
+    if (horizontal) return null;
+    
+    const lines = [];
+    const numLines = 5;
+    
+    for (let i = 0; i <= numLines; i++) {
+      const y = chartHeight - (i / numLines) * chartHeight;
+      const value = min + (i / numLines) * (max - min);
+      
+      lines.push(
+        <g key={`grid-y-${i}`}>
+          <line
+            x1={0}
+            y1={y}
+            x2={chartWidth}
+            y2={y}
+            stroke={theme.palette.divider}
+            strokeWidth={1}
+            strokeDasharray={i === 0 ? "0" : "4"}
+          />
+          
+          <text
+            x={-5}
+            y={y}
+            textAnchor="end"
+            dominantBaseline="middle"
+            fontSize={11}
+            fill={theme.palette.text.secondary}
+          >
+            {valuePrefix}{Math.round(value)}{valueSuffix}
+          </text>
+        </g>
+      );
+    }
+    
+    return lines;
+  };
+  
+  // Создаем линии сетки для оси X (только для горизонтальных полос)
+  const createXGridLines = () => {
+    if (!horizontal) return null;
+    
+    const lines = [];
+    const numLines = 5;
+    
+    for (let i = 0; i <= numLines; i++) {
+      const x = (i / numLines) * chartWidth;
+      const value = min + (i / numLines) * (max - min);
+      
+      lines.push(
+        <g key={`grid-x-${i}`}>
+          <line
+            x1={x}
+            y1={0}
+            x2={x}
+            y2={chartHeight}
+            stroke={theme.palette.divider}
+            strokeWidth={1}
+            strokeDasharray={i === 0 ? "0" : "4"}
+          />
+          
+          <text
+            x={x}
+            y={chartHeight + 15}
+            textAnchor="middle"
+            fontSize={11}
+            fill={theme.palette.text.secondary}
+          >
+            {valuePrefix}{Math.round(value)}{valueSuffix}
+          </text>
+        </g>
+      );
+    }
+    
+    return lines;
+  };
+  
+  // Рассчитываем размеры и положение SVG
+  const svgViewBox = horizontal 
+    ? `0 0 ${chartWidth + padding.left + padding.right} ${chartHeight + padding.top + padding.bottom}`
+    : `0 0 ${Math.max(chartWidth, 300)} ${chartHeight + padding.top + padding.bottom}`;
+  
+  return (
+    <MuiTooltip
+      title={activeIndex !== null ? 
+        `${data[activeIndex].label}: ${valuePrefix}${data[activeIndex].value.toLocaleString()}${valueSuffix}` : 
+        ''}
+      placement="top"
+      arrow
+      open={activeIndex !== null}
+    >
+      <Card variant="outlined">
+        <CardContent>
+          <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={2}>
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                {title}
+              </Typography>
+              
+              {description && (
+                <Typography variant="body2" color="text.secondary">
+                  {description}
+                </Typography>
+              )}
+            </Box>
+            
+            {showTotal && (
+              <Box display="flex" alignItems="center">
+                <Typography variant="h6" fontWeight="bold">
+                  {valuePrefix}{total.toLocaleString()}{valueSuffix}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+          
+          <Box 
+            sx={{ 
+              height: height, 
+              width: '100%', 
+              position: 'relative', 
+              mt: 2,
+              overflow: 'visible'
+            }}
+          >
+            <svg
+              width="100%"
+              height="100%"
+              viewBox={svgViewBox}
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <g transform={`translate(${padding.left}, ${padding.top})`}>
+                {/* Сетка */}
+                {createYGridLines()}
+                {createXGridLines()}
+                
+                {/* Столбцы/полосы */}
+                {createBars()}
+              </g>
+            </svg>
+          </Box>
+        </CardContent>
+      </Card>
+    </MuiTooltip>
   );
 };
 

@@ -11,7 +11,7 @@ import {
   List,
   ListItem,
   Circle
-} from '@chakra-ui/react';
+} from '@material-ui/react';
 
 // Данные для графика
 export interface PieData {

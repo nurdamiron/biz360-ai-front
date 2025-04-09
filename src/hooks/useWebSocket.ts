@@ -1,5 +1,5 @@
 // src/hooks/useWebSocket.ts
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import websocketService, { 
   WebSocketState, 
   MessageHandler 
@@ -22,6 +22,7 @@ interface UseWebSocketResult {
 export const useWebSocket = (): UseWebSocketResult => {
   const [state, setState] = useState<WebSocketState>(websocketService.getState());
   const dispatch = useAppDispatch();
+  const subscriptionsRef = useRef<Array<{resource: string, id: number | string, handler: MessageHandler}>>([]);
   
   // Обработчик изменения состояния WebSocket
   useEffect(() => {
@@ -43,41 +44,34 @@ export const useWebSocket = (): UseWebSocketResult => {
   
   // Метод для подписки на обновления ресурса
   const subscribe = useCallback((resource: string, id: number | string, handler: MessageHandler) => {
-    websocketService.subscribe(resource, id, handler);
+    // Запоминаем подписку для контроля дубликатов
+    const subscription = { resource, id, handler };
+    const exists = subscriptionsRef.current.some(
+      sub => sub.resource === resource && sub.id === id && sub.handler === handler
+    );
+    
+    if (!exists) {
+      subscriptionsRef.current.push(subscription);
+      websocketService.subscribe(resource, id, handler);
+    }
   }, []);
   
   // Метод для отписки от обновлений ресурса
   const unsubscribe = useCallback((resource: string, id: number | string, handler?: MessageHandler) => {
+    if (handler) {
+      // Удаляем конкретную подписку
+      subscriptionsRef.current = subscriptionsRef.current.filter(
+        sub => !(sub.resource === resource && sub.id === id && sub.handler === handler)
+      );
+    } else {
+      // Удаляем все подписки для ресурса и ID
+      subscriptionsRef.current = subscriptionsRef.current.filter(
+        sub => !(sub.resource === resource && sub.id === id)
+      );
+    }
+    
     websocketService.unsubscribe(resource, id, handler);
   }, []);
-  
-  // Автоматическая обработка обновлений задач
-  useEffect(() => {
-    const handleTaskUpdate = (data: Task) => {
-      dispatch(updateTaskFromWebSocket(data));
-    };
-    
-    const handleTaskLogUpdate = (data: { log: TaskLog }) => {
-      // Предполагаем, что в данных есть ссылка на ID задачи
-      if (data.log && data.log.taskId) {
-        dispatch(addTaskLogFromWebSocket({
-          taskId: data.log.taskId,
-          log: data.log
-        }));
-      }
-    };
-    
-    // Глобальная подписка на обновления задач
-    // В реальном приложении лучше подписываться на конкретные задачи
-    // Здесь показан простой пример
-    websocketService.subscribe('task_updates', 'all', handleTaskUpdate);
-    websocketService.subscribe('task_logs', 'all', handleTaskLogUpdate);
-    
-    return () => {
-      websocketService.unsubscribe('task_updates', 'all', handleTaskUpdate);
-      websocketService.unsubscribe('task_logs', 'all', handleTaskLogUpdate);
-    };
-  }, [dispatch]);
   
   return {
     state,

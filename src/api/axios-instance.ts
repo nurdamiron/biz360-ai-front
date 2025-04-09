@@ -48,6 +48,14 @@ apiClient.interceptors.request.use(
     }
     
     return config;
+
+    console.log('API Request:', {
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      token: localStorage.getItem('auth_token') ? 'Present' : 'Missing'
+    });
+    
   },
   (error: AxiosError) => {
     // Обрабатываем ошибку запроса

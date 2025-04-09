@@ -12,13 +12,16 @@ export const AuthService = {
    * @returns Данные пользователя и токен
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
+    console.log('Отправка запроса на логин:', credentials);
     const { data } = await apiClient.post<LoginResponse>('/auth/login', credentials);
+    console.log('Получен ответ:', data);
     
-    // Сохраняем токен в localStorage
     if (data.token) {
       localStorage.setItem('auth_token', data.token);
+      console.log('Токен сохранен в localStorage');
+    } else {
+      console.warn('Токен отсутствует в ответе!');
     }
-    
     return data;
   },
   
@@ -44,7 +47,7 @@ export const AuthService = {
    * @returns Данные пользователя
    */
   async getCurrentUser(): Promise<User> {
-    const { data } = await apiClient.get<User>('/auth/me');
+    const { data } = await apiClient.get<User>('/auth/me'); 
     return data;
   },
   

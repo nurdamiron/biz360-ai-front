@@ -228,10 +228,12 @@ export class WebSocketService {
    * @param message сообщение для отправки
    */
   private send(message: WebSocketMessage): void {
-    if (!this.isConnected()) {
-      // Ограничиваем размер очереди, чтобы избежать утечек памяти
+    // Проверяем состояние сокета перед отправкой
+    if (!this.isConnected() || !this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      // Единая логика обработки очереди
       if (this.messageQueue.length < this.maxQueueSize) {
         this.messageQueue.push(message);
+        console.log(`Message queued. Queue size: ${this.messageQueue.length}`);
       } else {
         console.warn(`WebSocket message queue is full. Message dropped: ${JSON.stringify(message)}`);
       }
@@ -245,15 +247,20 @@ export class WebSocketService {
     }
     
     try {
-      this.socket?.send(JSON.stringify(message));
+      this.socket.send(JSON.stringify(message));
     } catch (error) {
       console.error('Error sending WebSocket message:', error);
       
-      // Проверяем состояние сокета и при необходимости переподключаемся
-      if (this.socket?.readyState !== WebSocket.OPEN) {
+      // Используем ту же логику обработки очереди при ошибке
+      if (this.messageQueue.length < this.maxQueueSize) {
         this.messageQueue.push(message);
-        this.scheduleReconnect();
+        console.log(`Message re-queued after error. Queue size: ${this.messageQueue.length}`);
+      } else {
+        console.warn(`WebSocket message queue is full after error. Message dropped: ${JSON.stringify(message)}`);
       }
+      
+      // Планируем переподключение при ошибке
+      this.scheduleReconnect();
     }
   }
   

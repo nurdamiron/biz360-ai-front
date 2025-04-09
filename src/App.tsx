@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme, PaletteMode, CssBaseline } from '@mui/material';
 import { ruRU } from '@mui/material/locale';
 import { useAppDispatch, useAppSelector } from './hooks/redux';
-import { fetchUser } from './store/slices/authSlice';
+import { checkAuthStatus } from './store/slices/authSlice';
 import { SnackbarProvider } from 'notistack';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
@@ -66,10 +66,12 @@ function App() {
   
   // Проверяем аутентификацию пользователя при загрузке приложения
   useEffect(() => {
-    if (isLoggedIn) {
-      dispatch(fetchUser());
-    }
-  }, [dispatch, isLoggedIn]);
+    dispatch(checkAuthStatus())
+      .unwrap()
+      .catch(() => {
+        // Ошибки обрабатываются в самом thunk, здесь можно добавить доп. логику
+      });
+  }, [dispatch]);
   
   // Настройка PWA - добавляем мета-теги для мобильных устройств
   useEffect(() => {

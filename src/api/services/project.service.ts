@@ -4,7 +4,7 @@ import { Project, ProjectFilterParams } from '../../types/project.types';
 import { ApiResponse, PaginatedResponse } from '../../types/api.types';
 
 /**
- * Сервис для работы с проектами
+ * Сервис для работы с проектами≠
  */
 export const ProjectService = {
   /**
